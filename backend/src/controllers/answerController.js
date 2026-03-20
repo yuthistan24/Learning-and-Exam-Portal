@@ -1,0 +1,174 @@
+const Answer = require('../models/Answer');
+const Exam = require('../models/Exam');
+const Question = require('../models/Question');
+const { AppError } = require('../middleware/errorHandler');
+const { logger } = require('../utils/logger');
+
+// Submit/save answer
+exports.submitAnswer = async (req, res) => {
+  try {
+    const { examId, questionId } = req.params;
+    const { answerText } = req.body;
+    const studentId = req.user.userId;
+
+    // Validate exam and question exist
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+      throw new AppError('Exam not found', 404);
+    }
+
+    const question = await Question.findById(questionId);
+    if (!question) {
+      throw new AppError('Question not found', 404);
+    }
+
+    // Check if student is enrolled
+    if (!exam.enrolledStudents.includes(studentId)) {
+      throw new AppError('Not enrolled in this exam', 403);
+    }
+
+    // Check if exam is active
+    if (exam.status !== 'active') {
+      throw new AppError('Exam is not active', 400);
+    }
+
+    // Find existing answer
+    let answer = await Answer.findOne({
+      examId,
+      questionId,
+      studentId
+    });
+
+    if (answer && answer.isLocked) {
+      throw new AppError('Exam has been submitted and answered cannot be changed', 400);
+    }
+
+    if (answer) {
+      // Update existing answer
+      answer.answerText = answerText;
+      answer.updatedAt = new Date();
+    } else {
+      // Create new answer
+      answer = new Answer({
+        examId,
+        questionId,
+        studentId,
+        answerText,
+        submittedAt: new Date()
+      });
+    }
+
+    await answer.save();
+
+    logger.info(`Answer saved - Student: ${studentId}, Question: ${questionId}`);
+
+    res.json({
+      message: 'Answer saved successfully',
+      answer: answer.toObject()
+    });
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get student's answers for exam
+exports.getStudentAnswers = async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const studentId = req.user.userId;
+
+    const answers = await Answer.find({ examId, studentId }).sort({ submittedAt: -1 });
+
+    res.json(answers);
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get all answers for a question (teacher)
+exports.getQuestionAnswers = async (req, res) => {
+  try {
+    const { questionId } = req.params;
+
+    // Verify teacher authorization
+    const question = await Question.findById(questionId);
+    if (!question) {
+      throw new AppError('Question not found', 404);
+    }
+
+    const exam = await Exam.findById(question.examId);
+    if (exam.createdBy.toString() !== req.user.userId) {
+      throw new AppError('Not authorized', 403);
+    }
+
+    const answers = await Answer.find({ questionId })
+      .populate('studentId', 'name email');
+
+    res.json(answers);
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get all answers for exam (teacher)
+exports.getExamAnswers = async (req, res) => {
+  try {
+    const { examId } = req.params;
+
+    // Verify teacher authorization
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+      throw new AppError('Exam not found', 404);
+    }
+
+    if (exam.createdBy.toString() !== req.user.userId) {
+      throw new AppError('Not authorized', 403);
+    }
+
+    const answers = await Answer.find({ examId })
+      .populate('studentId', 'name email')
+      .populate('questionId', 'text marks')
+      .sort({ submittedAt: -1 });
+
+    res.json(answers);
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Submit exam (lock all answers)
+exports.submitExam = async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const studentId = req.user.userId;
+
+    // Verify exam exists
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+      throw new AppError('Exam not found', 404);
+    }
+
+    // Get all student answers
+    const answers = await Answer.find({ examId, studentId });
+
+    if (answers.length === 0) {
+      throw new AppError('No answers found for this exam', 404);
+    }
+
+    // Lock all answers
+    await Answer.updateMany(
+      { examId, studentId },
+      { isLocked: true }
+    );
+
+    logger.info(`Exam submitted - Student: ${studentId}, Exam: ${examId}`);
+
+    res.json({
+      message: 'Exam submitted successfully',
+      totalAnswers: answers.length,
+      submittedAt: new Date()
+    });
+  } catch (error) {
+    throw error;
+  }
+};
