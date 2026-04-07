@@ -1,21 +1,24 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+
+// MUST be required before routes to catch async errors
 require('express-async-errors');
 
 // Load environment variables
 dotenv.config();
 
 // Import routes
-const authRoutes = require('./src/routes/auth');
-const examRoutes = require('./src/routes/exams');
-const questionRoutes = require('./src/routes/questions');
-const answerRoutes = require('./src/routes/answers');
-const resultRoutes = require('./src/routes/results');
+const authRoutes = require('./routes/auth');
+const examRoutes = require('./routes/exams');
+const questionRoutes = require('./routes/questions');
+const answerRoutes = require('./routes/answers');
+const resultRoutes = require('./routes/results');
+const adminRoutes = require('./routes/admin');
 
 // Import middleware
-const { errorHandler } = require('./src/middleware/errorHandler');
-const { logger } = require('./src/utils/logger');
+const { errorHandler } = require('./middleware/errorHandler');
+const { logger } = require('./utils/logger');
 
 // Create Express app
 const app = express();
@@ -24,7 +27,19 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+  // Accept any localhost origin (port 80, 3000, 5173, etc) + any configured origins
+  origin: function(origin, callback) {
+    const allowed = process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',')
+      : [];
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    // Allow any localhost or 127.0.0.1 origin automatically
+    if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) || allowed.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS: ' + origin));
+    }
+  },
   credentials: true
 }));
 
@@ -45,6 +60,7 @@ app.use('/api/exams', examRoutes);
 app.use('/api/exams', questionRoutes);
 app.use('/api/answers', answerRoutes);
 app.use('/api/results', resultRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use((req, res) => {

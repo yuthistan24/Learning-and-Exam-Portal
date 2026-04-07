@@ -19,7 +19,9 @@ exports.createExam = async (req, res) => {
       totalMarks,
       instructions,
       createdBy: req.user.userId,
-      status: 'draft'
+      status: 'draft',
+      shuffleQuestions: false,
+      showFeedback: true
     });
 
     await exam.save();
@@ -34,14 +36,21 @@ exports.createExam = async (req, res) => {
   }
 };
 
-// Get all exams (paginated)
+// Get all exams (paginated) - role-based filtering
 exports.getAllExams = async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
     const skip = (page - 1) * limit;
+    const role = req.user?.role || 'student';
 
-    const filter = {};
-    if (status) filter.status = status;
+    // Filter based on role
+    const filter = { status: 'active' }; // Students only see active exams
+    if (role === 'teacher' || role === 'admin') {
+      filter.status = { $in: ['draft', 'active', 'closed'] };
+    }
+    if (status && role === 'student') {
+      filter.status = status;
+    }
 
     const exams = await Exam.find(filter)
       .populate('createdBy', 'name email')

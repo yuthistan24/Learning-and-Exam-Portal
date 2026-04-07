@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Global Exams & Learning</title>
+    <link rel="stylesheet" href="/src/css/style.css">
+</head>
+<body>
+    <div class="bg-mesh"></div>
+
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">Global Exams</div>
+            <ul class="navbar-menu">
+                <li><a href="/login.html">Login</a></li>
+                <li><a href="/signup.html" class="btn btn-primary" style="color:white">Get Started</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container auth-wrapper">
+        <div class="glass-card auth-box">
+            <h2>Welcome Back</h2>
+            <p class="subtitle">Enter your credentials to access the portal.</p>
+            
+            <form onsubmit="handleLoginSubmit(event)">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" required placeholder="you@university.edu" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required placeholder="••••••••" autocomplete="current-password">
+                </div>
+                
+                <div id="error-msg" style="display:none; background:rgba(239,68,68,0.15); border:1px solid #EF4444; color:#EF4444; padding:0.75rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:0.9rem;"></div>
+                
+                <button type="submit" id="submit-btn" class="btn btn-primary">Sign In</button>
+            </form>
+
+            <div class="auth-link">
+                Don't have an account? <a href="/signup.html">Sign up</a>
+            </div>
+        </div>
+    </main>
+
+    <script src="/src/js/api.js"></script>
+    <script>
+        const api = new APIClient();
+
+        function showError(msg) {
+            const el = document.getElementById('error-msg');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        async function handleLoginSubmit(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('submit-btn');
+            document.getElementById('error-msg').style.display = 'none';
+            
+            try {
+                btn.textContent = 'Authenticating...';
+                btn.disabled = true;
+                await api.login(email, password);
+                window.location.href = '/dashboard.html';
+            } catch (error) {
+                showError('Login failed: ' + (error.message || 'Could not connect to server. Is the backend running?'));
+                btn.textContent = 'Sign In';
+                btn.disabled = false;
+            }
+        }
+        
+        // Auto-redirect if already logged in
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('token')) {
+                window.location.href = '/dashboard.html';
+            }
+        });
+    </script>
+</body>
+</html>

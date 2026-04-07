@@ -6,7 +6,7 @@ const { authenticateToken, authorizeRole } = require('../middleware/auth');
 // Create exam (teacher only)
 router.post('/', authenticateToken, authorizeRole('teacher', 'admin'), examController.createExam);
 
-// Get all exams
+// Get all exams (students see active exams, teachers see all)
 router.get('/', authenticateToken, examController.getAllExams);
 
 // Get exam by ID

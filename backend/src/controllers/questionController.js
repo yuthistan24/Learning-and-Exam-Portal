@@ -1,5 +1,7 @@
 const Question = require('../models/Question');
 const Exam = require('../models/Exam');
+const QuestionBank = require('../models/QuestionBank');
+const Course = require('../models/Course');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 

@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mongod --version)",
+      "Bash(npm install:*)",
+      "Bash(python -m venv venv)",
+      "Bash(dir:*)",
+      "Bash(venv\\\\Scripts\\\\activate)",
+      "Bash(pip install:*)",
+      "Bash(.venv/Scripts/python.exe -c \"import sklearn; print\\(sklearn.__version__\\)\")",
+      "Bash(..\\\\.venv\\\\Scripts\\\\activate)",
+      "Bash(\"..\\\\\\\\.venv\\\\\\\\Scripts\\\\\\\\pip.exe\" install:*)",
+      "Bash(pip.exe install:*)",
+      "Bash(pip.exe:*)",
+      "Bash(where.exe python:*)",
+      "Bash(where.exe pip:*)",
+      "Bash(C:\\\\Users\\\\yuthg\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\Scripts\\\\pip.exe install:*)",
+      "Bash(C:\\\\Users\\\\yuthg\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe:*)",
+      "Bash(npm run:*)",
+      "Bash(python -m http.server 8080)",
+      "Bash(netstat -ano)",
+      "Bash(findstr \"8080\")",
+      "Bash(findstr \"LISTENING\")",
+      "Bash(\"C:\\\\Users\\\\yuthg\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -m http.server 8080)",
+      "Bash(findstr \":8080\")",
+      "Bash(curl:*)",
+      "Bash(Select-Object -First 100)",
+      "Bash(Select-Object -First 250)"
+    ]
+  }
+}

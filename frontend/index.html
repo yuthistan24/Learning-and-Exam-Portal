@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Exams - Online Learning & Exam Platform</title>
+    <link rel="stylesheet" href="/src/css/style.css">
+</head>
+<body>
+    <div class="bg-mesh"></div>
+
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">Global Exams</div>
+            <ul class="navbar-menu">
+                <li><a href="/login.html" class="btn btn-secondary">Login</a></li>
+                <li><a href="/signup.html" class="btn btn-primary" style="color:white">Get Started</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container auth-wrapper" style="min-height: 90vh; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <div class="glass-card" style="max-width: 700px; text-align: center;">
+            <h1 style="font-size: 3rem; margin-bottom: 1rem; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                🎓 Global Exams
+            </h1>
+            <p style="font-size: 1.3rem; color: var(--text-secondary); margin-bottom: 2rem;">
+                The Next Generation Online Learning & Examination Platform
+            </p>
+
+            <div style="background: rgba(59,130,246,0.1); padding: 2rem; border-radius: 12px; margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 1rem;">Platform Features</h3>
+                <ul style="text-align: left; display: inline-block;">
+                    <li style="margin-bottom: 0.5rem;">✅ Secure Online Exam Environment</li>
+                    <li style="margin-bottom: 0.5rem;">⏱️ Real-time Exam Monitoring</li>
+                    <li style="margin-bottom: 0.5rem;">📊 Instant Results & Analytics</li>
+                    <li style="margin-bottom: 0.5rem;">👥 Multi-role System (Student, Teacher, Admin)</li>
+                    <li style="margin-bottom: 0.5rem;">🔒 Secure Authentication & Access Control</li>
+                    <li style="margin-bottom: 0.5rem;">💾 Cloud-based Database</li>
+                </ul>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <a href="/login.html" class="btn btn-secondary">Already Registered? Login</a>
+                <a href="/signup.html" class="btn btn-primary">New User? Sign Up</a>
+            </div>
+
+            <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 0.85rem;">
+                <p>💡 Pro Tip: Use the platform to manage exams, track student progress, and improve learning outcomes!</p>
+            </div>
+        </div>
+    </main>
+
+    <script src="/src/js/api.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (localStorage.getItem('token')) {
+                try {
+                    const api = new APIClient();
+                    await api.getCurrentUser();
+                    window.location.href = '/dashboard.html';
+                } catch (error) {
+                    localStorage.removeItem('token');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -20,17 +20,40 @@ const userSchema = new mongoose.Schema({
     enum: ['student', 'teacher', 'admin'],
     default: 'student'
   },
-  name: {
-    type: String,
-    required: [true, 'Name is required']
-  },
   department: {
     type: String,
     default: null
   },
+  passwordResetToken: {
+    type: String,
+    exp: Date
+  },
+  resetPasswordExpires: {
+    type: Date,
+    default: null
+  },
+  name: {
+    type: String,
+    required: [true, 'Name is required']
+  },
   enrolledExams: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Exam'
+  }],
+  enrolledCourses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course'
+  }],
+  courseProgress: [{
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course'
+    },
+    completedUnits: [String],
+    score: {
+      type: Number,
+      default: 0
+    }
   }],
   isActive: {
     type: Boolean,

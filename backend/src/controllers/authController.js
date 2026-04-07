@@ -19,28 +19,33 @@ exports.register = async (req, res) => {
       throw new AppError('Email already registered', 400);
     }
 
+    // Validate role before creating user
+    const validRoles = ['student', 'teacher', 'admin'];
+    const userRole = validRoles.includes(role) ? role : 'student';
+
     // Create new user
-    const user = new User({
+    const newUser = new User({
       email,
       passwordHash: password,
       name,
-      role: role || 'student'
+      role: userRole
     });
 
-    await user.save();
-    logger.info(`User registered: ${email}`);
+    await newUser.save();
+    logger.info(`User registered: ${email} with role: ${userRole}`);
 
     // Generate token
-    const token = generateToken(user._id, user.role, user.email);
+    const token = generateToken(newUser._id, newUser.role, newUser.email);
 
     res.status(201).json({
       message: 'User registered successfully',
       token,
       user: {
-        userId: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role
+        userId: newUser._id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        department: newUser.department || null
       }
     });
   } catch (error) {
@@ -70,7 +75,7 @@ exports.login = async (req, res) => {
       throw new AppError('Invalid credentials', 401);
     }
 
-    logger.info(`User logged in: ${email}`);
+    logger.info(`User logged in: ${email} with role: ${user.role}`);
 
     // Generate token
     const token = generateToken(user._id, user.role, user.email);
@@ -82,7 +87,8 @@ exports.login = async (req, res) => {
         userId: user._id,
         email: user.email,
         name: user.name,
-        role: user.role
+        role: user.role,
+        department: user.department || null
       }
     });
   } catch (error) {

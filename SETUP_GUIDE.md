@@ -30,10 +30,11 @@ Before starting, ensure you have:
    > db.version()
    # Should show your MongoDB version
    ```
+   
 
 ### Option B: MongoDB Atlas (Cloud)
 
-1. Create account at https://cloud.mongodb.com
+1. Creat account at https://cloud.mongodb.com
 2. Create a project and cluster
 3. Get connection string: `mongodb+srv://username:password@host/dbname`
 4. Use this in `.env` files

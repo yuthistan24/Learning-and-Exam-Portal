@@ -1,3 +1,4 @@
+const api = new APIClient();
 let currentUser = null;
 let currentExam = null;
 let examStartTime = null;
@@ -8,18 +9,7 @@ let timerInterval = null;
 document.addEventListener('DOMContentLoaded', initApp);
 
 async function initApp() {
-    // Check if user is logged in
-    const token = localStorage.getItem('token');
-    if (token) {
-        try {
-            const response = await api.getCurrentUser();
-            currentUser = response.user;
-            showDashboard();
-        } catch (error) {
-            console.error('Failed to load user:', error);
-            logout();
-        }
-    }
+    // For legacy parts referencing initApp
 }
 
 function toggleAuthForm() {
@@ -132,16 +122,24 @@ async function loadTeacherExams() {
 }
 
 async function startExam(examId) {
+    if (!window.location.pathname.includes('exam.html')) {
+        window.location.href = `/exam.html?id=${examId}`;
+        return;
+    }
+    
     try {
         const response = await api.getExamById(examId);
         currentExam = response;
         examDuration = response.duration;
         examStartTime = Date.now();
         
-        // Hide dashboard, show exam
-        document.getElementById('student-dashboard').classList.add('hidden');
-        document.getElementById('exam-section').classList.remove('hidden');
-        
+        // Start Proctoring
+        try {
+            await proctor.start();
+        } catch (e) {
+            console.warn("Proctoring failed to start properly:", e);
+        }
+
         // Load exam title and questions
         document.getElementById('exam-title').textContent = response.title;
         loadQuestions(examId);
@@ -219,8 +217,8 @@ function startTimer() {
     }, 1000);
 }
 
-async function submitExam() {
-    if (!confirm('Are you sure you want to submit the exam?')) {
+async function submitExam(force = false) {
+    if (!force && !confirm('Are you sure you want to submit the exam?')) {
         return;
     }
     
@@ -230,6 +228,9 @@ async function submitExam() {
         await api.submitExam(examId);
         await api.initializeResult(examId);
         
+        // Stop Proctoring
+        proctor.stop();
+
         document.getElementById('exam-section').classList.add('hidden');
         showResults(examId);
     } catch (error) {
@@ -274,15 +275,137 @@ function logout() {
     document.getElementById('auth-form').reset();
 }
 
-// Placeholder functions for future implementation
+// --- Teacher Functions ---
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.add('hidden');
+}
+
 function showCreateExamForm() {
-    alert('Create exam form - coming soon');
+    document.getElementById('create-exam-modal').classList.remove('hidden');
+    document.getElementById('create-exam-form').reset();
 }
 
-function editExam(examId) {
-    alert('Edit exam feature - coming soon');
+async function handleCreateExamSubmit(event) {
+    event.preventDefault();
+    const title = document.getElementById('exam-title-input').value;
+    const description = document.getElementById('exam-desc-input').value;
+    const duration = document.getElementById('exam-duration-input').value;
+
+    try {
+        await api.createExam({
+            title,
+            description,
+            duration: parseInt(duration),
+            rules: []
+        });
+        closeModal('create-exam-modal');
+        loadTeacherExams(); // refresh list
+    } catch (error) {
+        alert('Failed to create exam: ' + error.message);
+    }
 }
 
-function viewResults(examId) {
-    alert('View results feature - coming soon');
+let activeEditExamId = null;
+
+async function editExam(examId) {
+    activeEditExamId = examId;
+    document.getElementById('edit-exam-modal').classList.remove('hidden');
+    
+    // Load existing questions
+    try {
+        const questions = await api.getQuestions(examId);
+        const listContainer = document.getElementById('existing-questions-list');
+        listContainer.innerHTML = '';
+        if (questions.length === 0) {
+            listContainer.innerHTML = '<p>No questions added yet.</p>';
+        } else {
+            questions.forEach((q, idx) => {
+                listContainer.innerHTML += `<div><strong>Q${idx+1}:</strong> ${q.text} (${q.marks} marks)</div>`;
+            });
+        }
+        
+        // Check if we can publish it
+        const examData = await api.getExamById(examId);
+        if (examData.status === 'draft') {
+            listContainer.innerHTML += `<button class="btn btn-primary" onclick="publishExam('${examId}')" style="margin-top: 10px;">Publish Exam</button>`;
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function publishExam(examId) {
+    try {
+        await api.publishExam(examId);
+        alert('Exam published successfully!');
+        closeModal('edit-exam-modal');
+        loadTeacherExams();
+    } catch (error) {
+        alert('Could not publish: ' + error.message);
+    }
+}
+
+function toggleOptionFields() {
+    const type = document.getElementById('q-type-input').value;
+    const optionsContainer = document.getElementById('mcq-options-container');
+    if (type === 'mcq') {
+        optionsContainer.style.display = 'block';
+    } else {
+        optionsContainer.style.display = 'none';
+    }
+}
+
+async function handleAddQuestionSubmit(event) {
+    event.preventDefault();
+    const type = document.getElementById('q-type-input').value;
+    const text = document.getElementById('q-text-input').value;
+    const marks = document.getElementById('q-marks-input').value;
+    const expectedRaw = document.getElementById('q-expected-input').value;
+    
+    let expectedAnswers = expectedRaw.split(',').map(s => s.trim());
+    let options = [];
+
+    if (type === 'mcq') {
+        const optionsRaw = document.getElementById('q-options-input').value;
+        options = optionsRaw.split(',').map(s => ({ text: s.trim() }));
+    }
+
+    const newQuestion = {
+        type, text, marks: parseInt(marks), expectedAnswers, options
+    };
+
+    try {
+        await api.addQuestion(activeEditExamId, newQuestion);
+        document.getElementById('add-question-form').reset();
+        editExam(activeEditExamId); // Refresh list
+    } catch (error) {
+        alert('Failed to add question: ' + error.message);
+    }
+}
+
+async function viewResults(examId) {
+    try {
+        const results = await api.getExamResults(examId);
+        const modal = document.getElementById('teacher-results-modal');
+        const container = document.getElementById('teacher-results-container');
+        
+        container.innerHTML = '';
+        if (results.length === 0) {
+            container.innerHTML = '<p>No results yet for this exam.</p>';
+        } else {
+            results.forEach(res => {
+                container.innerHTML += `
+                    <div style="border-bottom: 1px solid #ccc; margin-bottom: 10px; padding-bottom: 10px;">
+                        <h4>Student: ${res.studentId.name} (${res.studentId.email})</h4>
+                        <p>Score: ${res.totalScore} / ${res.totalMarks} (${res.percentage.toFixed(2)}%)</p>
+                        <p>Status: ${res.status}</p>
+                    </div>
+                `;
+            });
+        }
+        modal.classList.remove('hidden');
+    } catch (error) {
+        alert('Failed to load results: ' + error.message);
+    }
 }
