@@ -21,4 +21,7 @@ router.delete('/questions/:questionId', authenticateToken, authorizeRole('teache
 // Reorder questions (teacher only)
 router.post('/:examId/questions/reorder', authenticateToken, authorizeRole('teacher', 'admin'), questionController.reorderQuestions);
 
+// Bulk add questions to exam (teacher only)
+router.post('/:examId/questions/bulk-add', authenticateToken, authorizeRole('teacher', 'admin'), questionController.bulkAddQuestions);
+
 module.exports = router;

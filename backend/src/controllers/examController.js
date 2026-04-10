@@ -6,7 +6,7 @@ const { logger } = require('../utils/logger');
 // Create exam
 exports.createExam = async (req, res) => {
   try {
-    const { title, description, duration, totalMarks, instructions } = req.body;
+    const { title, description, duration, totalMarks, instructions, subject } = req.body;
 
     if (!title || !duration || !totalMarks) {
       throw new AppError('Title, duration, and totalMarks are required', 400);
@@ -15,6 +15,7 @@ exports.createExam = async (req, res) => {
     const exam = new Exam({
       title,
       description,
+      subject: subject || '',
       duration,
       totalMarks,
       instructions,

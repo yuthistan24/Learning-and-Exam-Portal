@@ -2,6 +2,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Offline-only LLM defaults (no external APIs / HF downloads)
+ENV TRANSFORMERS_OFFLINE=true \
+    HF_HUB_OFFLINE=1 \
+    HF_HOME=/app/models \
+    MODEL_CACHE_DIR=/app/models \
+    LLM_PROVIDER=ollama \
+    LLM_API_KEY=""
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
 

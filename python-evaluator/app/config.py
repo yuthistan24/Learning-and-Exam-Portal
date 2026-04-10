@@ -11,11 +11,14 @@ class Config:
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
     
     MODEL_CACHE_DIR = os.getenv('MODEL_CACHE_DIR', './models')
-    TRANSFORMERS_OFFLINE = os.getenv('TRANSFORMERS_OFFLINE', 'False').lower() == 'true'
+    # Default to offline to avoid accidental downloads of HF models
+    TRANSFORMERS_OFFLINE = os.getenv('TRANSFORMERS_OFFLINE', 'True').lower() == 'true'
     
-    LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'openai')
+    # Local-only defaults (no external APIs)
+    LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'ollama')
     LLM_API_KEY = os.getenv('LLM_API_KEY', '')
-    LLM_MODEL = os.getenv('LLM_MODEL', 'gpt-3.5-turbo')
+    LLM_MODEL = os.getenv('LLM_MODEL', os.getenv('OLLAMA_MODEL', 'local-model'))
+    OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://host.docker.internal:11434')
     
     EVALUATION_TIMEOUT = int(os.getenv('EVALUATION_TIMEOUT', 30))
     BATCH_SIZE = int(os.getenv('BATCH_SIZE', 10))

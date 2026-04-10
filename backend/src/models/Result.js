@@ -20,7 +20,7 @@ const resultSchema = new mongoose.Schema({
     feedback: String,
     evaluationMethod: {
       type: String,
-      enum: ['ai', 'keyword', 'exact', 'manual'],
+      enum: ['ai', 'keyword', 'exact', 'manual', 'pending'],
       default: 'keyword'
     },
     confidence: {
@@ -28,6 +28,13 @@ const resultSchema = new mongoose.Schema({
       min: 0,
       max: 1,
       default: 0.5
+    },
+    validationData: {
+      validated: { type: Boolean, default: false },
+      validationTimestamp: { type: Date, default: null },
+      validationMethod: { type: String, default: null },
+      validationScore: { type: Number, default: null },
+      discrepancy: { type: Number, default: 0 }
     }
   }],
   totalScore: {

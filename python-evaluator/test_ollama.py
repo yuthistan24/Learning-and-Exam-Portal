@@ -6,7 +6,8 @@ from langchain.prompts import PromptTemplate
 
 # Path to the syllabus in the parent directory
 SYLLABUS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "syllabus.pdf")
-MODELS = ["deepseek-r1", "qwen2.5:0.5b-instruct", "codellama"]
+MODELS = ["qwen2.5:0.5b-instruct", "llama3.1", "codellama"]
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 def load_pdf_text(filepath, max_pages=None):
     """Extract text from the PDF file."""
@@ -23,13 +24,14 @@ def load_pdf_text(filepath, max_pages=None):
     
     return text
 
-def initialize_llm(model_name=MODELS[0]):
+def initialize_llm(model_name=None):
     """Initialize LangChain Ollama connection."""
-    print(f"Connecting to Ollama using model: {model_name}...")
+    model_name = model_name or os.getenv("OLLAMA_MODEL") or os.getenv("LLM_MODEL") or MODELS[0]
+    print(f"Connecting to Ollama at {OLLAMA_BASE_URL} using model: {model_name}...")
     try:
         # We start with deepseek-r1, let's just attempt connection.
         # LangChain doesn't strictly fail on init, it fails on run if model doesn't exist.
-        return Ollama(model=model_name)
+        return Ollama(model=model_name, base_url=OLLAMA_BASE_URL)
     except Exception as e:
         print(f"Failed to connect: {e}")
         return None

@@ -9,6 +9,10 @@ const examSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  subject: {
+    type: String,
+    default: ''
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

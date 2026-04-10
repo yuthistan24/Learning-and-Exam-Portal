@@ -171,7 +171,58 @@ exports.deleteQuestion = async (req, res) => {
   }
 };
 
+// Bulk add questions to exam
+exports.bulkAddQuestions = async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const { questions } = req.body;
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      throw new AppError('questions must be a non-empty array', 400);
+    }
+
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+      throw new AppError('Exam not found', 404);
+    }
+
+    if (exam.createdBy.toString() !== req.user.userId) {
+      throw new AppError('Not authorized', 403);
+    }
+
+    const createdQuestions = [];
+
+    for (const qData of questions) {
+      const lastQuestion = await Question.findOne({ examId }).sort({ order: -1 });
+      const order = lastQuestion ? lastQuestion.order + 1 : 0;
+
+      const question = new Question({
+        examId,
+        ...qData,
+        order
+      });
+
+      await question.save();
+      createdQuestions.push(question);
+    }
+
+    // Update exam questionIds
+    exam.questionIds.push(...createdQuestions.map(q => q._id));
+    await exam.save();
+
+    logger.info(`Bulk added ${createdQuestions.length} questions to exam ${examId}`);
+
+    res.json({
+      message: `${createdQuestions.length} questions added successfully`,
+      questions: createdQuestions
+    });
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Reorder questions
+
 exports.reorderQuestions = async (req, res) => {
   try {
     const { questionOrder } = req.body; // Array of { questionId, order }

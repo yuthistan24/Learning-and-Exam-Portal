@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Global Exams & Learning Portal</title>
     <link rel="stylesheet" href="/src/css/style.css">
+    <link rel="stylesheet" href="/src/css/enhanced-style.css">
 </head>
 <body>
     <div class="bg-mesh"></div>
@@ -122,6 +123,10 @@
                     <textarea id="exam-description" required></textarea>
                 </div>
                 <div class="form-group">
+                    <label>Subject (Syllabus)</label>
+                    <select id="exam-subject" required></select>
+                </div>
+                <div class="form-group">
                     <label>Duration (minutes)</label>
                     <input type="number" id="exam-duration" required min="1" value="60">
                 </div>
@@ -169,10 +174,15 @@
         </div>
     </div>
 
-    <script src="/src/js/api.js"></script>
+    <script src="/src/js/syllabus.legacy.js"></script>
+    <script src="/src/js/api.legacy.js"></script>
     <script>
         const api = new APIClient();
         let currentUser = null;
+
+        function manageQuestions(examId) {
+            window.location.href = `/manage-exam.html?id=${examId}`;
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             if (!localStorage.getItem('token')) {
@@ -282,6 +292,7 @@
                             <span>⏱️ ${exam.duration} min</span>
                         </div>
                         <div class="exam-actions">
+                            <button onclick="manageQuestions('${exam._id}')" class="btn btn-secondary">Manage</button>
                             <button onclick="publishExam('${exam._id}')" class="btn btn-primary" ${exam.status === 'active' ? 'disabled' : ''}>Publish</button>
                         </div>
                     </div>
@@ -334,6 +345,7 @@
         }
 
         function showCreateExamModal() {
+            populateSubjectSelect(document.getElementById('exam-subject'));
             document.getElementById('create-exam-modal').classList.remove('hidden');
         }
 
@@ -351,6 +363,7 @@
                 const examData = {
                     title: document.getElementById('exam-title').value,
                     description: document.getElementById('exam-description').value,
+                    subject: document.getElementById('exam-subject').value,
                     duration: parseInt(document.getElementById('exam-duration').value),
                     totalMarks: parseInt(document.getElementById('exam-total-marks').value)
                 };

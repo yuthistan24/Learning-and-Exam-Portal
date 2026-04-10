@@ -15,8 +15,10 @@ const questionRoutes = require('./routes/questions');
 const answerRoutes = require('./routes/answers');
 const resultRoutes = require('./routes/results');
 const adminRoutes = require('./routes/admin');
+const pdfRoutes = require('./routes/pdf');
 
 // Import middleware
+
 const { errorHandler } = require('./middleware/errorHandler');
 const { logger } = require('./utils/logger');
 
@@ -61,8 +63,10 @@ app.use('/api/exams', questionRoutes);
 app.use('/api/answers', answerRoutes);
 app.use('/api/results', resultRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/pdf', pdfRoutes);
 
 // 404 handler
+
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });

@@ -25,7 +25,23 @@
       "Bash(findstr \":8080\")",
       "Bash(curl:*)",
       "Bash(Select-Object -First 100)",
-      "Bash(Select-Object -First 250)"
+      "Bash(Select-Object -First 250)",
+      "Bash(docker-compose logs:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose exec:*)",
+      "Bash(docker-compose config:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(npm view:*)",
+      "Bash(findstr \":80\")",
+      "Bash(docker service:*)",
+      "Bash(docker network rm:*)",
+      "Bash(apache2 -v)",
+      "Bash(findstr httpd:*)",
+      "Bash(Select-Object -Last 15)",
+      "Bash(Select-Object -Last 20)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

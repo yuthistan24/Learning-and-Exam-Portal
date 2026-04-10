@@ -26,12 +26,10 @@ class APIClient {
         try {
             response = await fetch(`${API_URL}${endpoint}`, options);
         } catch (networkErr) {
-            // Network error — backend is unreachable
             console.error('Network error:', networkErr);
             throw new Error('Cannot reach server. Please check that all services are running.');
         }
 
-        // Safely parse JSON — server might return HTML on 502/503
         let result;
         try {
             result = await response.json();
@@ -125,11 +123,50 @@ class APIClient {
         return this.request('GET', `/results/exam/${examId}`);
     }
 
+    // PDF upload and parsing
+    async uploadPDF(file) {
+        const formData = new FormData();
+        formData.append('pdf', file);
+
+        const options = {
+            method: 'POST',
+            headers: {
+                ...(this.token && { 'Authorization': `Bearer ${this.token}` })
+                // Content-Type is automatically set to multipart/form-data by browser when using FormData
+            },
+            body: formData
+        };
+
+        const response = await fetch(`${API_URL}/pdf/upload`, options);
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'PDF upload failed');
+        return result;
+    }
+
+    async parsePDFText(text) {
+        return this.request('POST', '/pdf/parse', { text });
+    }
+
+    async updateQuestion(questionId, questionData) {
+        return this.request('PUT', `/exams/questions/${questionId}`, questionData);
+    }
+
+    async deleteQuestion(questionId) {
+        return this.request('DELETE', `/exams/questions/${questionId}`);
+    }
+
+    // Bulk question import
+    async bulkAddQuestions(examId, questions) {
+        return this.request('POST', `/exams/${examId}/questions/bulk-add`, { questions });
+    }
+
     logout() {
         this.token = null;
         localStorage.removeItem('token');
     }
 }
 
-// Note: APIClient is instantiated per-page or from app.js
-// Do NOT redeclare 'const api' here as it conflicts with app.js
+// Instantiate the API client for use in other files
+const api = new APIClient();
+window.api = api; // Make it globally available for legacy HTML pages
+export default api;

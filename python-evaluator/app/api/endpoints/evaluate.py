@@ -11,6 +11,7 @@ from app.evaluators import (
     SemanticEvaluator,
     MathEvaluator
 )
+from app.validators.cross_validator import CrossValidator
 from app.utils.logger import logger
 
 router = APIRouter(prefix="/api", tags=["evaluation"])
@@ -20,6 +21,9 @@ exact_evaluator = ExactMatchEvaluator()
 keyword_evaluator = KeywordEvaluator(threshold=0.6)
 semantic_evaluator = SemanticEvaluator()
 math_evaluator = MathEvaluator()
+
+# Initialize validator
+validator = CrossValidator()
 
 def get_evaluator(method: str):
     """Get appropriate evaluator for method"""
@@ -34,24 +38,33 @@ def get_evaluator(method: str):
 @router.post("/evaluate", response_model=EvaluationResponseSchema)
 async def evaluate_answer(request: EvaluationRequestSchema):
     """
-    Evaluate a single answer based on rubric
+    Evaluate a single answer based on rubric with validation
     """
     try:
         logger.info(f"Evaluating answer using method: {request.rubric.method}")
-        
+
         # Choose evaluator based on rubric method
         evaluator = get_evaluator(request.rubric.method)
-        
+
         # Evaluate
         result = evaluator.evaluate(request.answer, request.rubric.dict())
-        
+
+        # Validate the evaluation
+        validation = validator.validate_evaluation(result, request.rubric.dict())
+
+        # If validation fails, adjust the result
+        if not validation.get('validated', True):
+            logger.warning(f"Evaluation validation failed: {validation.get('feedback', 'Unknown error')}")
+            result['feedback'] = validation['feedback']
+            result['confidence'] = max(0.1, result['confidence'] * 0.8)  # Reduce confidence
+
         return EvaluationResponseSchema(
             score=result['score'],
             feedback=result['feedback'],
             evaluationMethod=result['evaluation_method'],
             confidence=result['confidence']
         )
-    
+
     except Exception as e:
         logger.error(f"Evaluation error: {str(e)}")
         raise HTTPException(
@@ -68,9 +81,20 @@ async def batch_evaluate(request: BatchEvaluationRequestSchema):
         logger.info(f"Batch evaluating {len(request.answers)} answers for exam {request.examId}")
         
         results = []
+        validations = []
         for answer_request in request.answers:
             evaluator = get_evaluator(answer_request.rubric.method)
             result = evaluator.evaluate(answer_request.answer, answer_request.rubric.dict())
+
+            validation = validator.validate_evaluation(result, answer_request.rubric.dict())
+            validations.append(validation)
+
+            if not validation.get('validated', True):
+                logger.warning(
+                    f"Batch evaluation validation failed: {validation.get('feedback', 'Unknown error')}"
+                )
+                result['feedback'] = validation.get('feedback', result.get('feedback', ''))
+                result['confidence'] = max(0.1, result.get('confidence', 0.5) * 0.8)
             
             results.append(EvaluationResponseSchema(
                 score=result['score'],
@@ -82,7 +106,8 @@ async def batch_evaluate(request: BatchEvaluationRequestSchema):
         return {
             'examId': request.examId,
             'results': results,
-            'totalEvaluated': len(results)
+            'totalEvaluated': len(results),
+            'validationSummary': validator.get_validation_stats(validations)
         }
     
     except Exception as e:

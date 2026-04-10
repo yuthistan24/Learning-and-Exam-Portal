@@ -45,6 +45,22 @@ This is a **fully functional multi-role exam and learning platform** with the fo
 
 ## Quick Start (Docker)
 
+### 0. Local-Only LLM (Ollama)
+This stack uses **local** Ollama models only (no API keys, no HF downloads).
+An `ollama` container is included in `docker-compose.yml` and is the default LLM endpoint.
+
+1. Install and run Ollama on the host.
+2. Set your local model name in an `.env` file next to `docker-compose.yml`:
+```bash
+OLLAMA_MODEL=your-local-model-name
+```
+Optional (if Ollama is not on the default host URL):
+```bash
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+```
+
+If you want to use the **containerized** Ollama instead (default), you can omit `OLLAMA_BASE_URL`.
+
 ### 1. Clone and Navigate
 ```bash
 cd /path/to/Global-Exams-and-Learning-Portal

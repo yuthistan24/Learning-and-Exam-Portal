@@ -134,6 +134,14 @@ PORT=8000
 HOST=0.0.0.0
 DEBUG=True
 LOG_LEVEL=INFO
+LLM_PROVIDER=ollama
+LLM_API_KEY=
+LLM_MODEL=your-local-ollama-model
+OLLAMA_BASE_URL=http://ollama:11434
+TRANSFORMERS_OFFLINE=True
+HF_HUB_OFFLINE=1
+HF_HOME=./models
+MODEL_CACHE_DIR=./models
 ```
 
 ### Test Python Service

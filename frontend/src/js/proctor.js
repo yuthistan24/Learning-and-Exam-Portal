@@ -4,12 +4,17 @@ class ProctoringSystem {
         this.maxViolations = 3;
         this.isProctoring = false;
         this.videoStream = null;
+        this.fullscreenCheckInterval = null;
+        this.focusCheckInterval = null;
 
         // Bind methods to keep `this` context
         this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
         this.handleContextMenu = this.handleContextMenu.bind(this);
         this.handleCopyPaste = this.handleCopyPaste.bind(this);
         this.handleKeyboard = this.handleKeyboard.bind(this);
+        this.handleWindowBlur = this.handleWindowBlur.bind(this);
+        this.handleFullscreenChange = this.handleFullscreenChange.bind(this);
+        this.handlePointerLock = this.handlePointerLock.bind(this);
     }
 
     async start() {
@@ -26,29 +31,50 @@ class ProctoringSystem {
             throw new Error('Camera permission denied.');
         }
 
-        // 2. Request Fullscreen
-        try {
-            if (document.documentElement.requestFullscreen) {
-                await document.documentElement.requestFullscreen();
-            }
-        } catch (e) {
-            console.warn('Fullscreen request failed', e);
-        }
+        // 2. Request Fullscreen (non-blocking, but required for anti-cheat)
+        this.enforceFullscreen();
 
-        // 3. Attach Listeners
+        // 3. Request Pointer Lock (prevents mouse access to taskbar)
+        this.requestPointerLock();
+
+        // 4. Attach Listeners
         document.addEventListener('visibilitychange', this.handleVisibilityChange);
         document.addEventListener('contextmenu', this.handleContextMenu);
         document.addEventListener('copy', this.handleCopyPaste);
         document.addEventListener('paste', this.handleCopyPaste);
         document.addEventListener('keydown', this.handleKeyboard);
+        document.addEventListener('keyup', this.handleKeyboard);
+        window.addEventListener('blur', this.handleWindowBlur);
+        document.addEventListener('fullscreenchange', this.handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', this.handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', this.handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', this.handleFullscreenChange);
 
-        // Notify user
-        this.showWarning('Proctoring Started. Do not leave this tab, copy/paste, or exit fullscreen.');
+        // 5. Start monitoring intervals
+        this.fullscreenCheckInterval = setInterval(() => this.enforceFullscreen(), 2000);
+        this.focusCheckInterval = setInterval(() => this.checkWindowFocus(), 1000);
+
+        // 6. Prevent drag-and-drop
+        document.addEventListener('drag', e => e.preventDefault());
+        document.addEventListener('drop', e => e.preventDefault());
+
+        // 7. Notify user
+        this.showWarning('Exam Proctoring ENABLED: Stay fullscreen, no alt-tab, no copying. Violations will auto-submit exam.');
     }
 
     stop() {
         if (!this.isProctoring) return;
         this.isProctoring = false;
+
+        // Clear intervals
+        if (this.fullscreenCheckInterval) {
+            clearInterval(this.fullscreenCheckInterval);
+            this.fullscreenCheckInterval = null;
+        }
+        if (this.focusCheckInterval) {
+            clearInterval(this.focusCheckInterval);
+            this.focusCheckInterval = null;
+        }
 
         // Remove Listeners
         document.removeEventListener('visibilitychange', this.handleVisibilityChange);
@@ -56,6 +82,19 @@ class ProctoringSystem {
         document.removeEventListener('copy', this.handleCopyPaste);
         document.removeEventListener('paste', this.handleCopyPaste);
         document.removeEventListener('keydown', this.handleKeyboard);
+        document.removeEventListener('keyup', this.handleKeyboard);
+        window.removeEventListener('blur', this.handleWindowBlur);
+        document.removeEventListener('fullscreenchange', this.handleFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', this.handleFullscreenChange);
+        document.removeEventListener('mozfullscreenchange', this.handleFullscreenChange);
+        document.removeEventListener('MSFullscreenChange', this.handleFullscreenChange);
+        document.removeEventListener('drag', e => e.preventDefault());
+        document.removeEventListener('drop', e => e.preventDefault());
+
+        // Exit pointer lock
+        if (document.pointerLockElement) {
+            document.exitPointerLock();
+        }
 
         // Stop Webcam
         if (this.videoStream) {
@@ -158,21 +197,148 @@ class ProctoringSystem {
     }
 
     handleKeyboard(e) {
-        // Prevent F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+C, Ctrl+V, Esc
-        if (
-            e.key === 'F12' ||
-            (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) ||
-            (e.ctrlKey && e.key === 'U') ||
-            (e.ctrlKey && (e.key === 'c' || e.key === 'v'))
-        ) {
+        // Prevent developer tools and common shortcuts
+        const blockedShortcuts = [
+            { key: 'F12' },
+            { ctrlKey: true, shiftKey: true, key: 'I' },  // DevTools
+            { ctrlKey: true, shiftKey: true, key: 'J' },  // DevTools Console
+            { ctrlKey: true, shiftKey: true, key: 'C' },  // DevTools Inspector
+            { ctrlKey: true, shiftKey: true, key: 'K' },  // DevTools
+            { ctrlKey: true, key: 'U' },                   // View Source
+            { ctrlKey: true, key: 'S' },                   // Save
+            { ctrlKey: true, key: 'P' },                   // Print (could be used to export)
+            { metaKey: true, key: 'd' },                   // Bookmark (Mac)
+            { metaKey: true, key: 's' },                   // Save (Mac)
+            { metaKey: true, altKey: true, key: 'i' },    // DevTools (Mac)
+            { key: 'Escape' },                              // Exit fullscreen
+        ];
+
+        // Block copy and paste
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'v' || e.key === 'x')) {
             e.preventDefault();
-            this.showWarning('Developer tools and keyboard shortcuts are disabled.');
+            this.recordViolation('Copy/Paste/Cut is not permitted');
+            return;
         }
 
-        // Prevent escaping fullscreen unless they violate
-        if (e.key === 'Escape') {
+        // Check for Alt+Tab (Windows)
+        if (e.altKey && e.key === 'Tab') {
             e.preventDefault();
-            this.recordViolation('Attempted to exit fullscreen mode');
+            this.recordViolation('Alt+Tab is not permitted - cannot switch applications');
+            return;
+        }
+
+        // Check for Cmd+Tab (Mac)
+        if (e.metaKey && e.key === 'Tab') {
+            e.preventDefault();
+            this.recordViolation('Cmd+Tab is not permitted - cannot switch applications');
+            return;
+        }
+
+        // Check for Windows key
+        if (e.key === 'Meta' || e.key === 'Windows') {
+            e.preventDefault();
+            this.recordViolation('Windows key is disabled during exam');
+            return;
+        }
+
+        // Check other blocked shortcuts
+        for (let shortcut of blockedShortcuts) {
+            if (
+                (shortcut.ctrlKey === true ? e.ctrlKey : true) &&
+                (shortcut.shiftKey === true ? e.shiftKey : true) &&
+                (shortcut.altKey === true ? e.altKey : true) &&
+                (shortcut.metaKey === true ? e.metaKey : true) &&
+                e.key === shortcut.key
+            ) {
+                e.preventDefault();
+                if (e.key === 'Escape') {
+                    this.recordViolation('Attempted to exit fullscreen mode');
+                } else {
+                    this.showWarning('This keyboard shortcut is disabled during the exam');
+                }
+                return;
+            }
+        }
+    }
+
+    // New anti-cheat methods
+    enforceFullscreen() {
+        if (!this.isProctoring) return;
+
+        // Check if we're in fullscreen
+        const isFullscreen = 
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement;
+
+        if (!isFullscreen) {
+            // Try to re-enter fullscreen
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => {
+                    if (err.name !== 'NotSupportedError') {
+                        this.recordViolation('Exited fullscreen mode');
+                    }
+                });
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        }
+    }
+
+    handleFullscreenChange() {
+        if (!this.isProctoring) return;
+        
+        const isFullscreen = 
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement;
+
+        if (!isFullscreen && this.isProctoring) {
+            this.recordViolation('Exited fullscreen mode');
+        }
+    }
+
+    handleWindowBlur() {
+        if (!this.isProctoring) return;
+        this.recordViolation('Exam window lost focus - user may have switched applications');
+    }
+
+    checkWindowFocus() {
+        if (!this.isProctoring) return;
+
+        // If document is not visible (minimized or hidden), record violation
+        if (document.hidden) {
+            // Already handled by visibilitychange, but double-check
+            this.recordViolation('Tab is hidden or minimized');
+        }
+    }
+
+    requestPointerLock() {
+        // Attempt to lock pointer to prevent taskbar access on some browsers
+        document.addEventListener('click', () => {
+            const elem = document.documentElement;
+            if (elem.requestPointerLock) {
+                elem.requestPointerLock().catch(() => {
+                    // Pointer lock not supported or denied, continue anyway
+                    console.log('Pointer lock not available');
+                });
+            }
+        }, { once: true });
+    }
+
+    handlePointerLock() {
+        if (!this.isProctoring) return;
+        // Automatically try to maintain pointer lock if it was exited
+        const elem = document.documentElement;
+        if (elem.requestPointerLock && !document.pointerLockElement) {
+            elem.requestPointerLock().catch(() => {});
         }
     }
 }

@@ -8,8 +8,16 @@ class AppError extends Error {
 }
 
 const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal server error';
+  let statusCode = err.statusCode || 500;
+  let message = err.message || 'Internal server error';
+
+  // Multer errors (file upload)
+  if (err && err.name === 'MulterError') {
+    statusCode = 400;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'File too large';
+    }
+  }
 
   logger.error(`Error: ${message}`, err);
 

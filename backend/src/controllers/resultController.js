@@ -4,6 +4,7 @@ const Exam = require('../models/Exam');
 const Question = require('../models/Question');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
+const AIValidationService = require('../services/aiValidationService');
 
 // Get result for student
 exports.getStudentResult = async (req, res) => {
@@ -116,11 +117,12 @@ exports.updateResultScores = async (req, res) => {
       throw new AppError('Result not found', 404);
     }
 
-    // Update answer scores
+    // Update answer scores and validate
     let totalScore = 0;
     let totalMarks = 0;
+    const validationResults = [];
 
-    result.answers = result.answers.map(ans => {
+    for (const ans of result.answers) {
       const evaluated = evaluatedAnswers.find(
         e => e.questionId === ans.questionId.toString()
       );
@@ -130,13 +132,40 @@ exports.updateResultScores = async (req, res) => {
         ans.feedback = evaluated.feedback;
         ans.evaluationMethod = evaluated.evaluationMethod || 'ai';
         ans.confidence = evaluated.confidence || 0.5;
+
+        // Run AI validation on the evaluation
+        try {
+          const validation = await AIValidationService.validateEvaluation(evaluated, evaluated.rubric || {});
+          ans.validationData = {
+            validated: validation.validated,
+            validationTimestamp: new Date(),
+            validationMethod: validation.validationMethod,
+            validationScore: validation.validationScore,
+            discrepancy: validation.discrepancy
+          };
+
+          // If validation failed, adjust confidence
+          if (!validation.validated) {
+            ans.confidence = Math.max(0.1, ans.confidence * 0.8);
+            ans.feedback = validation.feedback;
+          }
+
+          validationResults.push(validation);
+        } catch (validationError) {
+          logger.warn(`Validation failed for question ${ans.questionId}: ${validationError.message}`);
+          ans.validationData = {
+            validated: false,
+            validationTimestamp: new Date(),
+            validationMethod: 'fallback',
+            validationScore: null,
+            discrepancy: 0
+          };
+        }
       }
 
       totalScore += ans.score;
       totalMarks += ans.maxScore;
-
-      return ans;
-    });
+    }
 
     result.totalScore = totalScore;
     result.totalMarks = totalMarks;
@@ -148,9 +177,12 @@ exports.updateResultScores = async (req, res) => {
 
     logger.info(`Result updated - Student: ${studentId}, Score: ${totalScore}/${totalMarks}`);
 
+    const validationStats = AIValidationService.getValidationStats(validationResults);
+
     res.json({
-      message: 'Result updated',
-      result: result.toObject()
+      message: 'Result updated with validation',
+      result: result.toObject(),
+      validation: validationStats
     });
   } catch (error) {
     throw error;
