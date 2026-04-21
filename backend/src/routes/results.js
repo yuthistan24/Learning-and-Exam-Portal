@@ -3,6 +3,21 @@ const router = express.Router();
 const resultController = require('../controllers/resultController');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
+// Get all results for student
+router.get('/my-results', authenticateToken, resultController.getStudentResults);
+
+// Get all results for exam (teacher)
+router.get('/exam/:examId', authenticateToken, authorizeRole('teacher', 'admin'), resultController.getExamResults);
+
+// Get student progress overview (teacher)
+router.get('/students/progress', authenticateToken, authorizeRole('teacher', 'admin'), resultController.getStudentProgress);
+
+// Detailed report (student)
+router.get('/:examId/report', authenticateToken, resultController.getResultReport);
+
+// Detailed report (teacher/admin)
+router.get('/:examId/report/:studentId', authenticateToken, authorizeRole('teacher', 'admin'), resultController.getResultReport);
+
 // Get student's result for exam
 router.get('/:examId', authenticateToken, resultController.getStudentResult);
 
@@ -11,11 +26,5 @@ router.post('/:examId/initialize', authenticateToken, resultController.initializ
 
 // Update result with scores
 router.put('/:examId', authenticateToken, resultController.updateResultScores);
-
-// Get all results for student
-router.get('/my-results', authenticateToken, resultController.getStudentResults);
-
-// Get all results for exam (teacher)
-router.get('/exam/:examId', authenticateToken, authorizeRole('teacher', 'admin'), resultController.getExamResults);
 
 module.exports = router;

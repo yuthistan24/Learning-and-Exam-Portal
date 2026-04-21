@@ -8,7 +8,7 @@ const { logger } = require('../utils/logger');
 // Add question to exam
 exports.addQuestion = async (req, res) => {
   try {
-    const { text, type, marks, options, rubric } = req.body;
+    const { text, type, marks, options, rubric, unit, topic } = req.body;
     const { examId } = req.params;
 
     // Validate exam exists and user is creator
@@ -53,6 +53,8 @@ exports.addQuestion = async (req, res) => {
       type,
       marks,
       options: type === 'mcq' ? options : [],
+      unit: unit || '',
+      topic: topic || '',
       rubric: rubric || {
         keywords: [],
         answerKey: '',

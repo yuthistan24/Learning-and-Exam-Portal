@@ -12,7 +12,7 @@ const questionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['mcq', 'short_answer', 'long_answer', 'math'],
+    enum: ['mcq', 'short_answer', 'long_answer', 'math', 'programming'],
     default: 'short_answer'
   },
   marks: {
@@ -32,10 +32,26 @@ const questionSchema = new mongoose.Schema({
     answerKey: String,
     method: {
       type: String,
-      enum: ['exact', 'keyword', 'semantic', 'math'],
+      enum: ['exact', 'keyword', 'semantic', 'math', 'programming'],
       default: 'keyword'
     },
-    sampleAnswers: [String]
+    sampleAnswers: [String],
+    testCases: [{
+      input: String,
+      expectedOutput: String,
+      weight: {
+        type: Number,
+        default: 1
+      }
+    }]
+  },
+  unit: {
+    type: String,
+    default: ''
+  },
+  topic: {
+    type: String,
+    default: ''
   },
   order: {
     type: Number,

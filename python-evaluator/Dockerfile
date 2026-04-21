@@ -10,8 +10,8 @@ ENV TRANSFORMERS_OFFLINE=true \
     LLM_PROVIDER=ollama \
     LLM_API_KEY=""
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
+# Install system dependencies (tesseract for offline OCR)
+RUN apt-get update && apt-get install -y gcc tesseract-ocr tesseract-ocr-eng && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
 COPY requirements.txt .

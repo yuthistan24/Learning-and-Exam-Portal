@@ -119,8 +119,19 @@ class APIClient {
         return this.request('POST', `/results/${examId}/initialize`, {});
     }
 
+    async initializeResultWithMeta(examId, payload) {
+        return this.request('POST', `/results/${examId}/initialize`, payload);
+    }
+
     async getExamResults(examId) {
         return this.request('GET', `/results/exam/${examId}`);
+    }
+
+    async getResultReport(examId, studentId = null) {
+        const path = studentId
+            ? `/results/${examId}/report/${studentId}`
+            : `/results/${examId}/report`;
+        return this.request('GET', path);
     }
 
     // PDF upload and parsing
@@ -158,6 +169,11 @@ class APIClient {
     // Bulk question import
     async bulkAddQuestions(examId, questions) {
         return this.request('POST', `/exams/${examId}/questions/bulk-add`, { questions });
+    }
+
+    // Chatbot endpoint
+    async sendChatMessage(message, context = null) {
+        return this.request('POST', '/chat', { message, context });
     }
 
     logout() {

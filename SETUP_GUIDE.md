@@ -157,6 +157,10 @@ Starting Python Evaluation Service on 0.0.0.0:8000
 
 Visit `http://localhost:8000/api/health` - should return healthy status.
 
+**For scanned PDFs (OCR):**
+The Python service uses local Tesseract for OCR inside Docker. If running locally,
+install Tesseract on your system to enable OCR for scanned PDFs.
+
 ## Step 4: Frontend Setup
 
 No build step needed for MVP! Just open the HTML file.

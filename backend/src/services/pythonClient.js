@@ -45,8 +45,24 @@ const healthCheck = async () => {
   }
 };
 
+// OCR extract text from scanned PDF (raw bytes)
+const ocrExtract = async (pdfBuffer) => {
+  try {
+    const response = await pythonClient.post('/api/ocr/extract', pdfBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    logger.error('OCR extraction error:', error.message);
+    throw error;
+  }
+};
+
 module.exports = {
   evaluateAnswer,
   batchEvaluate,
-  healthCheck
+  healthCheck,
+  ocrExtract
 };

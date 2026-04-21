@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.endpoints.evaluate import router as evaluation_router
+from app.api.endpoints.ocr import router as ocr_router
 from app.config import config
 from app.utils.logger import logger
 
@@ -22,6 +23,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(evaluation_router)
+app.include_router(ocr_router)
 
 # Root endpoint
 @app.get("/")

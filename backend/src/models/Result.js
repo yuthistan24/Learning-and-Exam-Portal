@@ -51,6 +51,20 @@ const resultSchema = new mongoose.Schema({
     max: 100,
     default: 0
   },
+  timeTakenSeconds: {
+    type: Number,
+    default: null
+  },
+  malpractice: {
+    violations: {
+      type: Number,
+      default: 0
+    },
+    flags: [{
+      reason: String,
+      timestamp: Date
+    }]
+  },
   gradedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

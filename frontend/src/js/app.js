@@ -1,6 +1,7 @@
 const api = new APIClient();
 let currentUser = null;
 let currentExam = null;
+let currentQuestions = [];
 let examStartTime = null;
 let examDuration = 0;
 let timerInterval = null;
@@ -152,10 +153,11 @@ async function startExam(examId) {
 async function loadQuestions(examId) {
     try {
         const response = await api.getQuestions(examId);
+        currentQuestions = Array.isArray(response) ? response : [];
         const container = document.getElementById('questions-container');
         
         container.innerHTML = '';
-        response.forEach((question, index) => {
+        currentQuestions.forEach((question, index) => {
             const questionDiv = document.createElement('div');
             questionDiv.className = 'question';
             questionDiv.innerHTML = `
@@ -169,13 +171,30 @@ async function loadQuestions(examId) {
                 optionsDiv.className = 'options';
                 question.options.forEach(option => {
                     const label = document.createElement('label');
+                    const inputId = `q${question._id}_${option.text.replace(/\s+/g, '_')}`;
                     label.innerHTML = `
-                        <input type="radio" name="q${question._id}" value="${option.text}">
+                        <input type="radio" id="${inputId}" name="q${question._id}" value="${option.text}">
                         ${option.text}
                     `;
+                    const input = label.querySelector('input');
+                    input.addEventListener('change', () => {
+                        submitAnswerToServer(examId, question._id, input.value);
+                    });
                     optionsDiv.appendChild(label);
                 });
                 questionDiv.appendChild(optionsDiv);
+            } else if (question.type === 'programming') {
+                const editorContainer = document.createElement('div');
+                editorContainer.className = 'code-editor-container';
+                const textarea = document.createElement('textarea');
+                textarea.id = `q${question._id}`;
+                textarea.className = 'code-textarea';
+                textarea.placeholder = '# Write your python code here...\n\n';
+                textarea.rows = 15;
+                textarea.style.fontFamily = 'monospace';
+                textarea.onchange = () => submitAnswerToServer(examId, question._id, textarea.value);
+                editorContainer.appendChild(textarea);
+                questionDiv.appendChild(editorContainer);
             } else {
                 const textarea = document.createElement('textarea');
                 textarea.id = `q${question._id}`;
@@ -225,8 +244,13 @@ async function submitExam(force = false) {
     try {
         clearInterval(timerInterval);
         const examId = currentExam._id;
+        await collectAndSaveAnswers(examId);
         await api.submitExam(examId);
-        await api.initializeResult(examId);
+        const timeTakenSeconds = Math.max(0, Math.floor((Date.now() - examStartTime) / 1000));
+        const malpractice = typeof proctor?.getSummary === 'function'
+            ? proctor.getSummary()
+            : { violations: 0, flags: [] };
+        await api.initializeResultWithMeta(examId, { timeTakenSeconds, malpractice });
         
         // Stop Proctoring
         proctor.stop();
@@ -235,6 +259,30 @@ async function submitExam(force = false) {
         showResults(examId);
     } catch (error) {
         alert('Failed to submit exam: ' + error.message);
+    }
+}
+
+async function collectAndSaveAnswers(examId) {
+    if (!currentQuestions || currentQuestions.length === 0) return;
+
+    const saveOps = [];
+    currentQuestions.forEach(question => {
+        if (question.type === 'mcq') {
+            const selected = document.querySelector(`input[name="q${question._id}"]:checked`);
+            if (selected && selected.value) {
+                saveOps.push(submitAnswerToServer(examId, question._id, selected.value));
+            }
+        } else {
+            const textarea = document.getElementById(`q${question._id}`);
+            const value = textarea ? textarea.value.trim() : '';
+            if (value) {
+                saveOps.push(submitAnswerToServer(examId, question._id, value));
+            }
+        }
+    });
+
+    if (saveOps.length > 0) {
+        await Promise.all(saveOps);
     }
 }
 
@@ -400,6 +448,7 @@ async function viewResults(examId) {
                         <h4>Student: ${res.studentId.name} (${res.studentId.email})</h4>
                         <p>Score: ${res.totalScore} / ${res.totalMarks} (${res.percentage.toFixed(2)}%)</p>
                         <p>Status: ${res.status}</p>
+                        <a class="btn btn-secondary" style="margin-top:8px;" href="/result-report.html?examId=${examId}&studentId=${res.studentId._id}">View Report</a>
                     </div>
                 `;
             });

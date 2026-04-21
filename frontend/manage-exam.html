@@ -53,6 +53,7 @@
                                 <option value="short_answer" selected>Short Answer</option>
                                 <option value="long_answer">Long Answer</option>
                                 <option value="math">Math</option>
+                                <option value="programming">Programming</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -63,6 +64,14 @@
                             <label>Question</label>
                             <textarea id="q-text" rows="5" required></textarea>
                         </div>
+                        <div class="form-group">
+                            <label>Unit</label>
+                            <input type="text" id="q-unit" placeholder="Unit I, Unit II, ..." />
+                        </div>
+                        <div class="form-group">
+                            <label>Topic</label>
+                            <input type="text" id="q-topic" placeholder="Stacks, Recursion, DBMS..." />
+                        </div>
                         <div class="form-group" id="mcq-options-group" style="display:none;">
                             <label>Options (comma separated)</label>
                             <input type="text" id="q-options" placeholder="Option A, Option B, Option C" />
@@ -70,6 +79,10 @@
                         <div class="form-group" id="mcq-correct-group" style="display:none;">
                             <label>Correct option(s) (comma separated)</label>
                             <input type="text" id="q-correct" placeholder="Option A" />
+                        </div>
+                        <div class="form-group">
+                            <label>Testcases (input => expected | weight)</label>
+                            <textarea id="q-testcases" rows="3" placeholder="5 7 => 12 | 1"></textarea>
                         </div>
                         <div class="form-group" id="expected-group">
                             <label>Expected answer / key points</label>
@@ -227,11 +240,14 @@
             const type = document.getElementById('q-type').value;
             const marks = parseInt(document.getElementById('q-marks').value, 10);
             const text = document.getElementById('q-text').value.trim();
+            const unit = document.getElementById('q-unit').value.trim();
+            const topic = document.getElementById('q-topic').value.trim();
+            const testCases = parseTestCases(document.getElementById('q-testcases').value);
 
             if (!text) return;
 
             let options = [];
-            let rubric = { keywords: [], answerKey: '', method: 'keyword' };
+            let rubric = { keywords: [], answerKey: '', method: 'keyword', testCases };
 
             if (type === 'mcq') {
                 const optionTexts = (document.getElementById('q-options').value || '')
@@ -244,18 +260,19 @@
                     .filter(Boolean);
 
                 options = optionTexts.map(t => ({ text: t, isCorrect: correctTexts.includes(t) }));
-                rubric = { keywords: [], answerKey: correctTexts.join(', '), method: 'exact' };
+                rubric = { keywords: [], answerKey: correctTexts.join(', '), method: 'exact', testCases };
             } else {
                 const expected = (document.getElementById('q-expected').value || '').trim();
                 rubric = {
                     keywords: expected ? expected.split(/\W+/).filter(w => w.length >= 4).slice(0, 12) : [],
                     answerKey: expected,
-                    method: type === 'math' ? 'math' : 'keyword',
+                    method: (type === 'math' || type === 'programming') ? type : 'keyword',
+                    testCases
                 };
             }
 
             try {
-                await api.addQuestion(examId, { type, marks, text, options, rubric });
+                await api.addQuestion(examId, { type, marks, text, options, rubric, unit, topic });
                 document.getElementById('add-question-form').reset();
                 document.getElementById('q-type').value = 'short_answer';
                 toggleMcqFields();
@@ -425,7 +442,16 @@
                 .replace(/\"/g, '&quot;')
                 .replace(/'/g, '&#039;');
         }
+
+        function parseTestCases(raw) {
+            const lines = (raw || '').split('\n').map(l => l.trim()).filter(Boolean);
+            return lines.map(line => {
+                const [left, weightPart] = line.split('|').map(s => s.trim());
+                const [input, expectedOutput] = (left || '').split('=>').map(s => s.trim());
+                const weight = weightPart ? parseFloat(weightPart) : 1;
+                return { input, expectedOutput, weight: isNaN(weight) ? 1 : weight };
+            });
+        }
     </script>
 </body>
 </html>
-

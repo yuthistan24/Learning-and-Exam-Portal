@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Global Exams</title>
+    <link rel="stylesheet" href="/src/css/style.css">
+    <link rel="stylesheet" href="/src/css/enhanced-style.css">
+</head>
+<body>
+    <div class="bg-mesh"></div>
+
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">Global Exams</div>
+            <ul class="navbar-menu">
+                <li><a href="/dashboard.html" class="btn btn-secondary" style="color:var(--text-secondary)">Dashboard</a></li>
+                <li><a href="#" onclick="logout()" class="btn btn-secondary" style="color:var(--text-secondary)">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container" style="padding-top: 2rem;">
+        <div class="dashboard-header">
+            <div>
+                <h1>Admin Control Center</h1>
+                <p style="color:var(--text-secondary);">User management, exams, and system metrics.</p>
+            </div>
+        </div>
+
+        <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:1.5rem;">
+            <div class="glass-card">
+                <div style="font-size:2rem;font-weight:bold;color:var(--accent-primary);" id="stat-users">0</div>
+                <div style="color:var(--text-secondary);margin-top:0.5rem;">Total Users</div>
+            </div>
+            <div class="glass-card">
+                <div style="font-size:2rem;font-weight:bold;color:var(--accent-secondary);" id="stat-exams">0</div>
+                <div style="color:var(--text-secondary);margin-top:0.5rem;">Total Exams</div>
+            </div>
+            <div class="glass-card">
+                <div style="font-size:2rem;font-weight:bold;color:var(--success);" id="stat-results">0</div>
+                <div style="color:var(--text-secondary);margin-top:0.5rem;">Total Results</div>
+            </div>
+        </section>
+
+        <section style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2rem;align-items:start;">
+            <div class="glass-card">
+                <h2 style="margin-top:0;">Create User</h2>
+                <form onsubmit="createUser(event)">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="new-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="new-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="new-password" required minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="new-role" required>
+                            <option value="student">Student</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" type="submit" style="width:100%;">Create User</button>
+                </form>
+            </div>
+
+            <div class="glass-card">
+                <h2 style="margin-top:0;">Recent Exams</h2>
+                <div id="exam-list" style="margin-top:1rem;">
+                    <div style="color:var(--text-secondary);">Loading…</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-card" style="margin-top:2rem;">
+            <h2 style="margin-top:0;">Users</h2>
+            <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="border-bottom:2px solid var(--border);">
+                            <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Name</th>
+                            <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Email</th>
+                            <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Role</th>
+                            <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-list"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="/src/js/api.legacy.js"></script>
+    <script>
+        const api = new APIClient();
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!localStorage.getItem('token')) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            try {
+                const me = await api.getCurrentUser();
+                if (me.user.role !== 'admin') {
+                    window.location.href = '/dashboard.html';
+                    return;
+                }
+
+                await loadStats();
+                await loadUsers();
+                await loadExams();
+            } catch (e) {
+                logout();
+            }
+        });
+
+        async function loadStats() {
+            const dashboard = await api.request('GET', '/admin/dashboard');
+            document.getElementById('stat-users').textContent = dashboard.totalUsers;
+            document.getElementById('stat-exams').textContent = dashboard.totalExams;
+            document.getElementById('stat-results').textContent = dashboard.totalResults;
+        }
+
+        async function loadUsers() {
+            const response = await api.request('GET', '/admin/users');
+            const tbody = document.getElementById('user-list');
+            tbody.innerHTML = response.users.map(user => `
+                <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:0.75rem;">${user.name}</td>
+                    <td style="padding:0.75rem;">${user.email}</td>
+                    <td style="padding:0.75rem;">${user.role}</td>
+                    <td style="padding:0.75rem;">
+                        <button class="btn btn-danger" onclick="deleteUser('${user._id}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadExams() {
+            const response = await api.getExams();
+            const list = document.getElementById('exam-list');
+            if (!response.exams || response.exams.length === 0) {
+                list.innerHTML = '<div style="color:var(--text-secondary);">No exams found.</div>';
+                return;
+            }
+            list.innerHTML = response.exams.slice(0, 6).map(exam => `
+                <div style="border-bottom:1px solid var(--border);padding:0.75rem 0;">
+                    <div style="font-weight:600;">${exam.title}</div>
+                    <div style="color:var(--text-secondary);font-size:0.9rem;">${exam.description || ''}</div>
+                    <div style="color:var(--text-secondary);font-size:0.85rem;">Status: ${exam.status}</div>
+                </div>
+            `).join('');
+        }
+
+        async function createUser(event) {
+            event.preventDefault();
+            const payload = {
+                name: document.getElementById('new-name').value,
+                email: document.getElementById('new-email').value,
+                password: document.getElementById('new-password').value,
+                role: document.getElementById('new-role').value
+            };
+
+            await api.request('POST', '/admin/users', payload);
+            event.target.reset();
+            await loadUsers();
+            await loadStats();
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Delete this user permanently?')) return;
+            await api.request('DELETE', `/admin/users/${userId}`);
+            await loadUsers();
+            await loadStats();
+        }
+
+        function logout() {
+            api.logout();
+            window.location.href = '/login.html';
+        }
+    </script>
+</body>
+</html>
+

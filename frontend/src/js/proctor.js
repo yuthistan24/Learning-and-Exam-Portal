@@ -6,6 +6,8 @@ class ProctoringSystem {
         this.videoStream = null;
         this.fullscreenCheckInterval = null;
         this.focusCheckInterval = null;
+        this.cameraCheckInterval = null;
+        this.violationLog = [];
 
         // Bind methods to keep `this` context
         this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
@@ -53,6 +55,7 @@ class ProctoringSystem {
         // 5. Start monitoring intervals
         this.fullscreenCheckInterval = setInterval(() => this.enforceFullscreen(), 2000);
         this.focusCheckInterval = setInterval(() => this.checkWindowFocus(), 1000);
+        this.cameraCheckInterval = setInterval(() => this.checkCameraStatus(), 1500);
 
         // 6. Prevent drag-and-drop
         document.addEventListener('drag', e => e.preventDefault());
@@ -74,6 +77,10 @@ class ProctoringSystem {
         if (this.focusCheckInterval) {
             clearInterval(this.focusCheckInterval);
             this.focusCheckInterval = null;
+        }
+        if (this.cameraCheckInterval) {
+            clearInterval(this.cameraCheckInterval);
+            this.cameraCheckInterval = null;
         }
 
         // Remove Listeners
@@ -142,6 +149,10 @@ class ProctoringSystem {
     recordViolation(reason) {
         if (!this.isProctoring) return;
         this.violations++;
+        this.violationLog.push({
+            reason,
+            timestamp: new Date().toISOString()
+        });
         
         const remaining = this.maxViolations - this.violations;
         if (remaining > 0) {
@@ -177,6 +188,13 @@ class ProctoringSystem {
         setTimeout(() => {
             if (banner.parentNode) banner.parentNode.removeChild(banner);
         }, 5000);
+    }
+
+    getSummary() {
+        return {
+            violations: this.violations,
+            flags: this.violationLog
+        };
     }
 
     // Handlers
@@ -317,6 +335,23 @@ class ProctoringSystem {
         if (document.hidden) {
             // Already handled by visibilitychange, but double-check
             this.recordViolation('Tab is hidden or minimized');
+        }
+    }
+
+    checkCameraStatus() {
+        if (!this.isProctoring) return;
+        if (!this.videoStream) {
+            this.recordViolation('Webcam stream is unavailable');
+            return;
+        }
+        const tracks = this.videoStream.getVideoTracks();
+        if (!tracks || tracks.length === 0) {
+            this.recordViolation('Webcam video track missing');
+            return;
+        }
+        const active = tracks.some(t => t.readyState === 'live' && t.enabled);
+        if (!active) {
+            this.recordViolation('Webcam was disabled or stopped');
         }
     }
 

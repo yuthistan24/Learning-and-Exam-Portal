@@ -22,9 +22,10 @@ exports.submitAnswer = async (req, res) => {
       throw new AppError('Question not found', 404);
     }
 
-    // Check if student is enrolled
+    // Auto-enroll student on first answer if not enrolled
     if (!exam.enrolledStudents.includes(studentId)) {
-      throw new AppError('Not enrolled in this exam', 403);
+      exam.enrolledStudents.push(studentId);
+      await exam.save();
     }
 
     // Check if exam is active
@@ -141,6 +142,7 @@ exports.submitExam = async (req, res) => {
   try {
     const { examId } = req.params;
     const studentId = req.user.userId;
+    const { timeTakenSeconds, malpractice } = req.body || {};
 
     // Verify exam exists
     const exam = await Exam.findById(examId);
@@ -166,7 +168,9 @@ exports.submitExam = async (req, res) => {
     res.json({
       message: 'Exam submitted successfully',
       totalAnswers: answers.length,
-      submittedAt: new Date()
+      submittedAt: new Date(),
+      timeTakenSeconds: timeTakenSeconds || null,
+      malpractice: malpractice || null
     });
   } catch (error) {
     throw error;

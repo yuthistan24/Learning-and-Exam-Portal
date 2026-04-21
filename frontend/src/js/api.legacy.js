@@ -153,8 +153,19 @@ class APIClient {
     return this.request("POST", `/results/${examId}/initialize`, {});
   }
 
+  async initializeResultWithMeta(examId, payload) {
+    return this.request("POST", `/results/${examId}/initialize`, payload);
+  }
+
   async getExamResults(examId) {
     return this.request("GET", `/results/exam/${examId}`);
+  }
+
+  async getResultReport(examId, studentId = null) {
+    const path = studentId
+      ? `/results/${examId}/report/${studentId}`
+      : `/results/${examId}/report`;
+    return this.request("GET", path);
   }
 
   // PDF upload and parsing
@@ -190,4 +201,3 @@ class APIClient {
 // Make available globally for legacy HTML pages
 window.APIClient = APIClient;
 window.api = new APIClient();
-

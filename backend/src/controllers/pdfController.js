@@ -2,6 +2,7 @@ const pdf = require('pdf-parse-fork');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 const fs = require('fs');
+const pythonClient = require('../services/pythonClient');
 
 // Extract raw text from uploaded PDF
 exports.uploadAndExtractText = async (req, res) => {
@@ -12,6 +13,18 @@ exports.uploadAndExtractText = async (req, res) => {
 
     const dataBuffer = fs.readFileSync(req.file.path);
     const data = await pdf(dataBuffer);
+    let extractedText = data.text || '';
+    let ocrUsed = false;
+
+    if (!extractedText.trim()) {
+      try {
+        const ocrResult = await pythonClient.ocrExtract(dataBuffer);
+        extractedText = ocrResult.text || '';
+        ocrUsed = true;
+      } catch (ocrError) {
+        logger.error(`OCR extraction failed: ${ocrError.message}`);
+      }
+    }
 
     // Clean up the uploaded file immediately
     fs.unlinkSync(req.file.path);
@@ -19,9 +32,10 @@ exports.uploadAndExtractText = async (req, res) => {
     logger.info(`Extracted text from PDF: ${req.file.originalname}`);
 
     res.json({
-      text: data.text,
+      text: extractedText,
       numPages: data.numpages,
-      info: data.info
+      info: data.info,
+      ocrUsed
     });
   } catch (error) {
     logger.error(`PDF Extraction Error: ${error.message}`);

@@ -16,6 +16,7 @@ const answerRoutes = require('./routes/answers');
 const resultRoutes = require('./routes/results');
 const adminRoutes = require('./routes/admin');
 const pdfRoutes = require('./routes/pdf');
+const courseRoutes = require('./routes/courses');
 
 // Import middleware
 
@@ -64,6 +65,9 @@ app.use('/api/answers', answerRoutes);
 app.use('/api/results', resultRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/pdf', pdfRoutes);
+app.use('/api/courses', courseRoutes);
+const chatRoutes = require('./routes/chat');
+app.use('/api/chat', chatRoutes);
 
 // 404 handler
 

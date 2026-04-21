@@ -28,6 +28,9 @@
                     <h1>📚 Learning Portal</h1>
                     <p style="color: var(--text-secondary);">Welcome! Take exams and track your progress.</p>
                 </div>
+                <div style="display:flex; gap:1rem;">
+                    <a href="/learning.html" class="btn btn-secondary">📘 Learning Portal</a>
+                </div>
             </div>
 
             <div style="margin-top: 2rem;">
@@ -61,6 +64,13 @@
                     <div style="text-align: center;padding: 2rem;color: var(--text-secondary);">Loading exams...</div>
                 </div>
             </div>
+
+            <div style="margin-top: 3rem;">
+                <h2>🎓 Student Progress Overview</h2>
+                <div id="teacher-student-progress" class="exams-grid" style="margin-top:1rem;">
+                    <div style="text-align: center;padding: 2rem;color: var(--text-secondary);">Loading student analytics...</div>
+                </div>
+            </div>
         </section>
 
         <!-- Admin Dashboard -->
@@ -89,6 +99,7 @@
 
             <h3 style="margin-top: 2rem;">User Management</h3>
             <div style="margin-bottom: 1rem;">
+                <a href="/admin.html" class="btn btn-secondary" style="margin-right:0.5rem;">Open Admin Panel</a>
                 <button onclick="showCreateUserModal()" class="btn btn-primary">+ Add User</button>
             </div>
             <div id="admin-users-list" style="overflow-x: auto;">
@@ -202,6 +213,7 @@
                 } else if (currentUser.role === 'teacher') {
                     document.getElementById('teacher-dashboard').classList.remove('hidden');
                     loadTeacherExams();
+                    loadStudentProgress();
                 } else if (currentUser.role === 'admin') {
                     document.getElementById('admin-dashboard').classList.remove('hidden');
                     loadAdminDashboard();
@@ -299,6 +311,44 @@
                 `).join('');
             } catch (error) {
                 console.error('Failed to load exams:', error);
+            }
+        }
+
+        async function loadStudentProgress() {
+            try {
+                const response = await api.request('GET', '/results/students/progress');
+                const progressData = response.progress || [];
+                const container = document.getElementById('teacher-student-progress');
+
+                if (progressData.length === 0) {
+                    container.innerHTML = '<div style="grid-column: 1/-1;text-align: center;padding: 2rem;color: var(--text-secondary);">No student data available.</div>';
+                    return;
+                }
+
+                container.innerHTML = progressData.map(student => `
+                    <div class="glass-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3 style="margin-bottom:0;">${student.name}</h3>
+                            <span class="status-badge" style="background:var(--bg-surface);">${student.examsTaken} Exams</span>
+                        </div>
+                        <p style="color:var(--text-muted); font-size:0.9rem; margin-top:0.2rem;">${student.email}</p>
+                        
+                        <div style="margin-top:1.5rem;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.9rem;">
+                                <span>Average Score</span>
+                                <span style="color:${student.averageScore >= 60 ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${student.averageScore}%</span>
+                            </div>
+                            <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                                <div style="height:100%; width:${student.averageScore}%; background:${student.averageScore >= 60 ? 'var(--success)' : 'var(--danger)'}; border-radius:4px;"></div>
+                            </div>
+                        </div>
+                        <div style="margin-top:1.5rem; font-size:0.85rem; color:var(--text-muted);">
+                            Last Active: ${student.lastActive}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load student progress:', error);
             }
         }
 
