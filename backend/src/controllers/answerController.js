@@ -1,3 +1,4 @@
+const axios = require('axios');
 const Answer = require('../models/Answer');
 const Exam = require('../models/Exam');
 const Question = require('../models/Question');
@@ -174,5 +175,47 @@ exports.submitExam = async (req, res) => {
     });
   } catch (error) {
     throw error;
+  }
+};
+
+// Run code (student testing)
+exports.runCode = async (req, res) => {
+  try {
+    const { code, input = '', questionId } = req.body;
+    
+    if (!code) {
+      throw new AppError('Code is required', 400);
+    }
+
+    let rubric = { method: 'programming' };
+    
+    // If questionId is provided, get the rubric (test cases)
+    if (questionId) {
+      const question = await Question.findById(questionId);
+      if (question && (question.rubric || question.test_cases)) {
+        rubric = question.rubric || { test_cases: question.test_cases };
+      }
+    }
+
+    const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
+    
+    const response = await axios.post(`${pythonServiceUrl}/api/evaluate`, {
+      answer: code,
+      rubric: {
+        ...rubric,
+        method: 'programming',
+        test_cases: rubric.test_cases || rubric.testCases || [{ input, expected_output: '', weight: 1 }]
+      }
+    }, {
+      timeout: parseInt(process.env.PYTHON_SERVICE_TIMEOUT) || 30000
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    logger.error(`Code execution error: ${error.message}`);
+    res.status(error.response?.status || 500).json({
+      message: 'Failed to execute code',
+      error: error.response?.data || error.message
+    });
   }
 };

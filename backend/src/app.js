@@ -17,6 +17,7 @@ const resultRoutes = require('./routes/results');
 const adminRoutes = require('./routes/admin');
 const pdfRoutes = require('./routes/pdf');
 const courseRoutes = require('./routes/courses');
+const statsRoutes = require('./routes/stats');
 
 // Import middleware
 
@@ -66,6 +67,7 @@ app.use('/api/results', resultRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/courses', courseRoutes);
+app.use('/api/stats', statsRoutes);
 const chatRoutes = require('./routes/chat');
 app.use('/api/chat', chatRoutes);
 

@@ -140,6 +140,14 @@ class APIClient {
     return this.request("POST", `/answers/${examId}/submit`, {});
   }
 
+  async runCode(examId, questionId, code) {
+    return this.request("POST", "/answers/run-code", {
+      examId,
+      questionId,
+      code,
+    });
+  }
+
   async getExamAnswers(examId) {
     return this.request("GET", `/answers/${examId}/my-answers`);
   }
@@ -166,6 +174,15 @@ class APIClient {
       ? `/results/${examId}/report/${studentId}`
       : `/results/${examId}/report`;
     return this.request("GET", path);
+  }
+
+  // Stats endpoints
+  async getStudentStats() {
+    return this.request("GET", "/stats/my-stats");
+  }
+
+  async getGlobalStats() {
+    return this.request("GET", "/stats/global");
   }
 
   // PDF upload and parsing

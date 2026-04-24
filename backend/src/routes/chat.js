@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { authenticateToken } = require('../middleware/auth');
 
-router.post('/', protect, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const { message, context } = req.body;
     

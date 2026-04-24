@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Course = require('../models/Course');
-const { protect } = require('../middleware/authMiddleware');
+const { authenticateToken } = require('../middleware/auth');
 
 // Get all courses (syllabus)
-router.get('/', protect, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { semester } = req.query;
     const query = semester ? { semester } : {};
@@ -16,7 +16,7 @@ router.get('/', protect, async (req, res) => {
 });
 
 // Get a specific course
-router.get('/:id', protect, async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const course = await Course.findById(req.params.id);
     if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
@@ -28,7 +28,7 @@ router.get('/:id', protect, async (req, res) => {
 
 // Get practice questions for a topic
 const Question = require('../models/Question');
-router.get('/questions/:courseId/:topic', protect, async (req, res) => {
+router.get('/questions/:courseId/:topic', authenticateToken, async (req, res) => {
   try {
     const { topic } = req.params;
     const questions = await Question.find({ topic: { $regex: topic, $options: 'i' } }).limit(10);

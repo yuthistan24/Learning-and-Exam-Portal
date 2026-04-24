@@ -18,4 +18,7 @@ router.get('/question/:questionId', authenticateToken, answerController.getQuest
 // Get all answers for exam (teacher)
 router.get('/exam/:examId', authenticateToken, answerController.getExamAnswers);
 
+// Run code (student testing)
+router.post('/run-code', authenticateToken, answerController.runCode);
+
 module.exports = router;

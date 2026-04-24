@@ -185,15 +185,21 @@ async function loadQuestions(examId) {
                 questionDiv.appendChild(optionsDiv);
             } else if (question.type === 'programming') {
                 const editorContainer = document.createElement('div');
-                editorContainer.className = 'code-editor-container';
-                const textarea = document.createElement('textarea');
-                textarea.id = `q${question._id}`;
-                textarea.className = 'code-textarea';
-                textarea.placeholder = '# Write your python code here...\n\n';
-                textarea.rows = 15;
-                textarea.style.fontFamily = 'monospace';
-                textarea.onchange = () => submitAnswerToServer(examId, question._id, textarea.value);
-                editorContainer.appendChild(textarea);
+                editorContainer.className = 'code-editor-wrapper';
+                editorContainer.innerHTML = `
+                    <div class="code-editor-header">
+                        <span>Python Editor</span>
+                        <button class="btn btn-secondary btn-sm run-btn" onclick="runCode('${examId}', '${question._id}')">▶ Run Code</button>
+                    </div>
+                    <textarea id="q${question._id}" class="code-textarea" 
+                        placeholder="# Write your python code here..." 
+                        spellcheck="false"
+                        onchange="submitAnswerToServer('${examId}', '${question._id}', this.value)">${question.answerText || ''}</textarea>
+                    <div id="output-q${question._id}" class="code-output hidden">
+                        <div class="output-header">Output:</div>
+                        <pre class="output-content"></pre>
+                    </div>
+                `;
                 questionDiv.appendChild(editorContainer);
             } else {
                 const textarea = document.createElement('textarea');
@@ -456,5 +462,40 @@ async function viewResults(examId) {
         modal.classList.remove('hidden');
     } catch (error) {
         alert('Failed to load results: ' + error.message);
+    }
+}
+
+async function runCode(examId, questionId) {
+    const textarea = document.getElementById(`q${questionId}`);
+    const outputDiv = document.getElementById(`output-q${questionId}`);
+    const outputContent = outputDiv.querySelector('.output-content');
+    const runBtn = window.event.target;
+    
+    if (!textarea.value.trim()) {
+        alert('Please write some code first.');
+        return;
+    }
+
+    try {
+        runBtn.disabled = true;
+        runBtn.textContent = '⌛ Running...';
+        outputDiv.classList.remove('hidden');
+        outputContent.textContent = 'Executing...';
+        
+        const result = await api.runCode(examId, questionId, textarea.value);
+        
+        if (result.score === 1) {
+            outputContent.style.color = 'var(--success)';
+        } else {
+            outputContent.style.color = 'var(--text-primary)';
+        }
+        
+        outputContent.textContent = result.feedback || 'Code executed successfully (no output).';
+    } catch (error) {
+        outputContent.style.color = 'var(--danger)';
+        outputContent.textContent = 'Error: ' + error.message;
+    } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = '▶ Run Code';
     }
 }
