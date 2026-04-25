@@ -41,6 +41,10 @@
                 <div style="font-size:2rem;font-weight:bold;color:var(--success);" id="stat-results">0</div>
                 <div style="color:var(--text-secondary);margin-top:0.5rem;">Total Results</div>
             </div>
+            <div class="glass-card">
+                <div style="font-size:2rem;font-weight:bold;color:var(--warning);" id="stat-courses">0</div>
+                <div style="color:var(--text-secondary);margin-top:0.5rem;">Active Courses</div>
+            </div>
         </section>
 
         <section style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2rem;align-items:start;">
@@ -88,6 +92,7 @@
                             <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Name</th>
                             <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Email</th>
                             <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Role</th>
+                            <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Enrolled Courses</th>
                             <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Actions</th>
                         </tr>
                     </thead>
@@ -96,6 +101,21 @@
             </div>
         </section>
     </main>
+
+    <div id="assign-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="assign-title">Assign Course</h3>
+            <p id="assign-user-info" style="color:var(--text-secondary); margin-bottom:1.5rem;"></p>
+            <div class="form-group">
+                <label>Select Course</label>
+                <select id="assign-course-select"></select>
+            </div>
+            <div style="display:flex; gap:1rem; margin-top:2rem;">
+                <button class="btn btn-primary" onclick="confirmAssignment()" style="flex:1;">Confirm</button>
+                <button class="btn btn-secondary" onclick="hideAssignModal()" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
 
     <script src="/src/js/api.legacy.js"></script>
     <script>
@@ -127,21 +147,27 @@
             document.getElementById('stat-users').textContent = dashboard.totalUsers;
             document.getElementById('stat-exams').textContent = dashboard.totalExams;
             document.getElementById('stat-results').textContent = dashboard.totalResults;
+            document.getElementById('stat-courses').textContent = dashboard.totalCourses || 0;
         }
 
         async function loadUsers() {
             const response = await api.request('GET', '/admin/users');
             const tbody = document.getElementById('user-list');
-            tbody.innerHTML = response.users.map(user => `
-                <tr style="border-bottom:1px solid var(--border);">
-                    <td style="padding:0.75rem;">${user.name}</td>
-                    <td style="padding:0.75rem;">${user.email}</td>
-                    <td style="padding:0.75rem;">${user.role}</td>
-                    <td style="padding:0.75rem;">
-                        <button class="btn btn-danger" onclick="deleteUser('${user._id}')">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = response.users.map(user => {
+                const enrolled = (user.enrolledCourses || []).map(c => c.code || c).join(', ') || 'None';
+                return `
+                    <tr style="border-bottom:1px solid var(--border);">
+                        <td style="padding:0.75rem;">${user.name}</td>
+                        <td style="padding:0.75rem;">${user.email}</td>
+                        <td style="padding:0.75rem;">${user.role}</td>
+                        <td style="padding:0.75rem; color:var(--accent-primary); font-size:0.85rem;">${enrolled}</td>
+                        <td style="padding:0.75rem; display:flex; gap:0.5rem;">
+                            ${user.role === 'student' ? `<button class="btn btn-secondary btn-sm" onclick="showAssignModal('${user._id}', '${user.name}')">Assign</button>` : ''}
+                            <button class="btn btn-danger btn-sm" onclick="deleteUser('${user._id}')">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         async function loadExams() {
@@ -175,6 +201,40 @@
             await loadStats();
         }
 
+        let currentAssignUserId = null;
+        async function showAssignModal(userId, userName) {
+            currentAssignUserId = userId;
+            document.getElementById('assign-user-info').textContent = `Assigning course to: ${userName}`;
+            
+            // Load courses if not already loaded or every time to be safe
+            const coursesRes = await api.getCourses();
+            const select = document.getElementById('assign-course-select');
+            select.innerHTML = coursesRes.courses.map(c => `
+                <option value="${c._id}">${c.code} - ${c.title}</option>
+            `).join('');
+            
+            document.getElementById('assign-modal').classList.remove('hidden');
+        }
+
+        function hideAssignModal() {
+            document.getElementById('assign-modal').classList.add('hidden');
+            currentAssignUserId = null;
+        }
+
+        async function confirmAssignment() {
+            const courseId = document.getElementById('assign-course-select').value;
+            if (!courseId || !currentAssignUserId) return;
+
+            try {
+                await api.request('POST', `/admin/users/${currentAssignUserId}/courses`, { courseId });
+                alert('Course assigned successfully');
+                hideAssignModal();
+                await loadUsers();
+            } catch (e) {
+                alert('Failed to assign course: ' + e.message);
+            }
+        }
+
         async function deleteUser(userId) {
             if (!confirm('Delete this user permanently?')) return;
             await api.request('DELETE', `/admin/users/${userId}`);
@@ -189,4 +249,3 @@
     </script>
 </body>
 </html>
-

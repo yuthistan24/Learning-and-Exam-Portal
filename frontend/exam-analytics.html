@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Analytics - Global Exams</title>
+    <link rel="stylesheet" href="/src/css/style.css">
+    <link rel="stylesheet" href="/src/css/enhanced-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 2rem;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
+            height: 200px;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+        }
+        .bar-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .bar {
+            width: 100%;
+            background: var(--accent-primary);
+            border-radius: 4px 4px 0 0;
+            transition: height 0.6s ease-out;
+            min-height: 4px;
+        }
+        .bar-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        .success-rate-pill {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-mesh"></div>
+
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/dashboard.html" class="logo"><span>Global</span> Exams</a>
+            <ul class="navbar-menu">
+                <li>
+                    <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
+                        <i class="fas fa-sun"></i>
+                    </button>
+                </li>
+                <li><span id="user-display" style="color:var(--text-secondary); font-size:0.9rem;">Loading...</span></li>
+                <li><a href="/dashboard.html" class="btn btn-secondary">Dashboard</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container" style="padding-top: 2rem; padding-bottom: 5rem;">
+        <div class="glass-card" style="margin-bottom: 2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+                <div>
+                    <h1 id="exam-title" style="margin:0;">Exam Analytics</h1>
+                    <p id="exam-subtitle" style="color:var(--text-secondary); margin:0.5rem 0 0;">Loading performance data...</p>
+                </div>
+                <button class="btn btn-primary" onclick="window.print()">Export PDF</button>
+            </div>
+        </div>
+
+        <section class="analytics-grid">
+            <div class="glass-card stat-box">
+                <div class="stat-value" id="stat-avg-score">0%</div>
+                <div style="color:var(--text-secondary);">Average Score</div>
+            </div>
+            <div class="glass-card stat-box">
+                <div class="stat-value" id="stat-pass-rate" style="background: linear-gradient(135deg, var(--success), #10b981);">0%</div>
+                <div style="color:var(--text-secondary);">Pass Rate (>=40%)</div>
+            </div>
+            <div class="glass-card stat-box">
+                <div class="stat-value" id="stat-attempts">0</div>
+                <div style="color:var(--text-secondary);">Total Attempts</div>
+            </div>
+            <div class="glass-card stat-box">
+                <div class="stat-value" id="stat-malpractice" style="background: linear-gradient(135deg, var(--danger), #ef4444);">0</div>
+                <div style="color:var(--text-secondary);">Proctoring Alerts</div>
+            </div>
+        </section>
+
+        <section style="display:grid; grid-template-columns: 1fr 1.5fr; gap:1.5rem; margin-top:2rem;">
+            <div class="glass-card">
+                <h2 style="margin-top:0;">Score Distribution</h2>
+                <div class="bar-chart" id="score-chart">
+                    <div class="bar-container"><div class="bar" style="height: 0%"></div><div class="bar-label">0-20</div></div>
+                    <div class="bar-container"><div class="bar" style="height: 0%"></div><div class="bar-label">21-40</div></div>
+                    <div class="bar-container"><div class="bar" style="height: 0%"></div><div class="bar-label">41-60</div></div>
+                    <div class="bar-container"><div class="bar" style="height: 0%"></div><div class="bar-label">61-80</div></div>
+                    <div class="bar-container"><div class="bar" style="height: 0%"></div><div class="bar-label">81-100</div></div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h2 style="margin-top:0;">Question-wise Analysis</h2>
+                <div style="overflow-x:auto;">
+                    <table id="question-stats-table">
+                        <thead>
+                            <tr>
+                                <th>Question</th>
+                                <th>Type</th>
+                                <th>Avg Marks</th>
+                                <th>Success Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">Loading data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-card" style="margin-top:2rem;">
+            <h2 style="margin-top:0;">Student Performance</h2>
+            <div style="overflow-x:auto;">
+                <table id="student-stats-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Email</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                            <th>Violations</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="6" style="text-align:center; color:var(--text-secondary);">Loading data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="/src/js/api.legacy.js"></script>
+    <script>
+        const api = new APIClient();
+        let examId = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            examId = urlParams.get('examId');
+            if (!examId) {
+                window.location.href = '/dashboard.html';
+                return;
+            }
+
+            try {
+                const analytics = await api.request('GET', `/exams/${examId}/analytics`);
+                const results = await api.getExamResults(examId);
+                renderAnalytics(analytics);
+                renderStudentResults(results);
+            } catch (error) {
+                console.error(error);
+                alert('Failed to load analytics: ' + error.message);
+            }
+        });
+
+        function renderAnalytics(data) {
+            document.getElementById('exam-title').textContent = data.title;
+            document.getElementById('exam-subtitle').textContent = `Total Students Enrolled: ${data.totalStudents}`;
+            
+            document.getElementById('stat-avg-score').textContent = `${data.avgScore}%`;
+            document.getElementById('stat-pass-rate').textContent = `${data.passRate}%`;
+            document.getElementById('stat-attempts').textContent = data.attempts;
+            document.getElementById('stat-malpractice').textContent = data.malpracticeCount;
+
+            // Render Distribution Chart
+            if (data.distribution) {
+                const bars = document.querySelectorAll('.bar');
+                const max = Math.max(...data.distribution, 1);
+                data.distribution.forEach((val, i) => {
+                    const height = (val / max) * 100;
+                    bars[i].style.height = `${height}%`;
+                    bars[i].title = `${val} students`;
+                });
+            }
+
+            // Render Question Stats
+            const qTableBody = document.querySelector('#question-stats-table tbody');
+            if (data.questionWisePerformance && data.questionWisePerformance.length > 0) {
+                qTableBody.innerHTML = data.questionWisePerformance.map(q => {
+                    const rate = q.successRate;
+                    const color = rate >= 75 ? 'var(--success)' : (rate >= 40 ? 'var(--warning)' : 'var(--danger)');
+                    return `
+                        <tr>
+                            <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(q.text)}</td>
+                            <td style="text-transform:capitalize;">${q.type}</td>
+                            <td>${q.avgScore} / ${q.marks}</td>
+                            <td>
+                                <span class="success-rate-pill" style="background:${color}15; color:${color}; border:1px solid ${color}30;">
+                                    ${rate}%
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                qTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No question-wise data available.</td></tr>';
+            }
+        }
+
+        function renderStudentResults(results) {
+            const sTableBody = document.querySelector('#student-stats-table tbody');
+            if (!results || results.length === 0) {
+                sTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No student submissions yet.</td></tr>';
+                return;
+            }
+
+            sTableBody.innerHTML = results.map(r => {
+                const percentage = r.percentage || 0;
+                const statusColor = percentage >= 40 ? 'var(--success)' : 'var(--danger)';
+                const violations = r.malpractice?.violations || 0;
+                return `
+                    <tr>
+                        <td>${escapeHtml(r.studentId?.name || 'Unknown')}</td>
+                        <td>${escapeHtml(r.studentId?.email || '-')}</td>
+                        <td style="font-weight:bold;">${r.totalScore} / ${r.totalMarks} (${percentage}%)</td>
+                        <td>
+                            <span class="status-badge" style="background:${statusColor}15; color:${statusColor};">
+                                ${percentage >= 40 ? 'PASS' : 'FAIL'}
+                            </span>
+                        </td>
+                        <td>
+                            <span style="color:${violations > 0 ? 'var(--danger)' : 'var(--text-secondary)'};">
+                                ${violations} ${violations === 1 ? 'alert' : 'alerts'}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="/result-report.html?examId=${examId}&studentId=${r.studentId?._id}" class="btn btn-secondary btn-sm">View Details</a>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function logout() {
+            api.logout();
+            window.location.href = '/login.html';
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

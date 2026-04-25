@@ -6,16 +6,22 @@
     <title>Evaluation Report - Global Exams</title>
     <link rel="stylesheet" href="/src/css/style.css">
     <link rel="stylesheet" href="/src/css/enhanced-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="bg-mesh"></div>
 
     <nav class="navbar">
         <div class="navbar-container">
-            <div class="navbar-brand">Global Exams</div>
+            <a href="/dashboard.html" class="logo"><span>Global</span> Exams</a>
             <ul class="navbar-menu">
-                <li><a href="/results.html" class="btn btn-secondary" style="color:var(--text-secondary)">Back</a></li>
-                <li><a href="/dashboard.html" class="btn btn-secondary" style="color:var(--text-secondary)">Dashboard</a></li>
+                <li>
+                    <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
+                        <i class="fas fa-sun"></i>
+                    </button>
+                </li>
+                <li><span id="user-display" style="color:var(--text-secondary); font-size:0.9rem;">Loading...</span></li>
+                <li><a href="/dashboard.html" class="btn btn-secondary">Dashboard</a></li>
             </ul>
         </div>
     </nav>

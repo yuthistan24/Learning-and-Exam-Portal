@@ -7,11 +7,19 @@ const { logger } = require('../utils/logger');
 const AIValidationService = require('../services/aiValidationService');
 const pythonClient = require('../services/pythonClient');
 
+const canManageExam = (req, exam) => (
+  req.user.role === 'admin' || exam.createdBy.toString() === req.user.userId
+);
+
 // Get result for student
 exports.getStudentResult = async (req, res) => {
   try {
     const { examId } = req.params;
     const studentId = req.user.userId;
+
+    if (req.user.role !== 'student') {
+      throw new AppError('Use the exam results endpoint to review student results', 403);
+    }
 
     const result = await Result.findOne({ examId, studentId })
       .populate('examId', 'title totalMarks')
@@ -38,7 +46,7 @@ exports.getExamResults = async (req, res) => {
       throw new AppError('Exam not found', 404);
     }
 
-    if (exam.createdBy.toString() !== req.user.userId) {
+    if (!canManageExam(req, exam)) {
       throw new AppError('Not authorized', 403);
     }
 
@@ -58,6 +66,10 @@ exports.initializeResult = async (req, res) => {
     const { examId } = req.params;
     const studentId = req.user.userId;
     const { timeTakenSeconds, malpractice } = req.body || {};
+
+    if (req.user.role !== 'student') {
+      throw new AppError('Only students can submit results', 403);
+    }
 
     // Check if result already exists
     let result = await Result.findOne({ examId, studentId });
@@ -271,9 +283,19 @@ exports.getResultReport = async (req, res) => {
 exports.updateResultScores = async (req, res) => {
   try {
     const { examId } = req.params;
-    const { answers: evaluatedAnswers } = req.body; 
+    const { answers: evaluatedAnswers, studentId } = req.body; 
 
-    const studentId = req.user.userId;
+    if (!studentId) {
+      throw new AppError('studentId is required', 400);
+    }
+
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+      throw new AppError('Exam not found', 404);
+    }
+    if (!canManageExam(req, exam)) {
+      throw new AppError('Not authorized', 403);
+    }
 
     const result = await Result.findOne({ examId, studentId });
     if (!result) {
@@ -360,12 +382,13 @@ exports.getStudentResults = async (req, res) => {
 // Teacher - View aggregate Student Progress
 exports.getStudentProgress = async (req, res) => {
   try {
-    // For simplicity, showing progress for 'student' roles
     const User = require('../models/User');
     const students = await User.find({ role: 'student' }).select('name email');
     
-    // Get all results
-    const results = await Result.find().populate('examId', 'title');
+    const examFilter = req.user.role === 'teacher' ? { createdBy: req.user.userId } : {};
+    const exams = await Exam.find(examFilter).select('_id title');
+    const examIds = exams.map(exam => exam._id);
+    const results = await Result.find({ examId: { $in: examIds } }).populate('examId', 'title');
     
     const progressData = students.map(student => {
       const studentResults = results.filter(r => r.studentId.toString() === student._id.toString());

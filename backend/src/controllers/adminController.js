@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Exam = require('../models/Exam');
 const Result = require('../models/Result');
+const Course = require('../models/Course');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 
@@ -8,7 +9,10 @@ const { logger } = require('../utils/logger');
 exports.getAdminDashboard = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
+    const totalStudents = await User.countDocuments({ role: 'student', isActive: true });
+    const totalTeachers = await User.countDocuments({ role: 'teacher', isActive: true });
     const totalExams = await Exam.countDocuments();
+    const totalCourses = await Course.countDocuments({ status: 'active' });
     const totalResults = await Result.countDocuments();
 
     const usersByRole = await User.aggregate([
@@ -25,14 +29,17 @@ exports.getAdminDashboard = async (req, res) => {
         $group: {
           _id: '$examId',
           attempts: { $sum: 1 },
-          avgScore: { $avg: '$score' }
+          avgScore: { $avg: '$percentage' }
         }
       }
     ]);
 
     res.json({
       totalUsers,
+      totalStudents,
+      totalTeachers,
       totalExams,
+      totalCourses,
       totalResults,
       usersByRole,
       examStats
@@ -73,12 +80,14 @@ exports.getUsers = async (req, res) => {
 // Get specific user details
 exports.getUserDetails = async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId).select('-passwordHash');
+    const user = await User.findById(req.params.userId)
+      .select('-passwordHash')
+      .populate('enrolledCourses', 'title code');
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
-    const exams = await Exam.find({ creatorId: req.params.userId });
+    const exams = await Exam.find({ createdBy: req.params.userId });
     const results = await Result.find({ userId: req.params.userId }).populate('examId', 'title');
 
     res.json({
@@ -98,6 +107,9 @@ exports.createUser = async (req, res) => {
 
     if (!email || !password || !name) {
       throw new AppError('Email, password, and name are required', 400);
+    }
+    if (String(password).length < 8) {
+      throw new AppError('Password must be at least 8 characters long', 400);
     }
 
     const existingUser = await User.findOne({ email });
@@ -137,7 +149,7 @@ exports.createUser = async (req, res) => {
 // Update user
 exports.updateUser = async (req, res) => {
   try {
-    const { name, role, department, status } = req.body;
+    const { name, role, department, isActive } = req.body;
     const userId = req.params.userId;
 
     const user = await User.findByIdAndUpdate(
@@ -146,7 +158,7 @@ exports.updateUser = async (req, res) => {
         ...(name && { name }),
         ...(role && { role }),
         ...(department && { department }),
-        ...(status && { status })
+        ...(isActive !== undefined && { isActive })
       },
       { new: true, runValidators: true }
     );
@@ -175,10 +187,15 @@ exports.updateUser = async (req, res) => {
 // Delete user
 exports.deleteUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.userId);
+    const user = await User.findById(req.params.userId);
     if (!user) {
       throw new AppError('User not found', 404);
     }
+    if (user._id.toString() === req.user.userId) {
+      throw new AppError('You cannot delete your own admin account', 400);
+    }
+
+    await User.findByIdAndDelete(req.params.userId);
 
     logger.info(`Admin deleted user: ${user.email}`);
 
@@ -197,16 +214,62 @@ exports.getManagedExams = async (req, res) => {
     let query = {};
 
     if (req.user.role === 'teacher') {
-      query.creatorId = req.user.userId;
+      query.createdBy = req.user.userId;
     }
 
     const exams = await Exam.find(query)
-      .populate('creatorId', 'name')
+      .populate('createdBy', 'name')
       .sort({ createdAt: -1 });
 
     res.json({
       exams
     });
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Assign a course to a user
+exports.assignCourseToUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { courseId } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) throw new AppError('User not found', 404);
+
+    const course = await Course.findById(courseId);
+    if (!course) throw new AppError('Course not found', 404);
+
+    if (user.enrolledCourses.includes(courseId)) {
+      return res.status(400).json({ message: 'User already enrolled in this course' });
+    }
+
+    user.enrolledCourses.push(courseId);
+    await user.save();
+
+    logger.info(`Admin assigned course ${course.code} to user ${user.email}`);
+
+    res.json({ message: 'Course assigned successfully', user });
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Remove a course from a user
+exports.removeCourseFromUser = async (req, res) => {
+  try {
+    const { userId, courseId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) throw new AppError('User not found', 404);
+
+    user.enrolledCourses = user.enrolledCourses.filter(id => id.toString() !== courseId);
+    await user.save();
+
+    logger.info(`Admin removed course ${courseId} from user ${user.email}`);
+
+    res.json({ message: 'Course removed successfully', user });
   } catch (error) {
     throw error;
   }
@@ -219,18 +282,18 @@ exports.getStats = async (req, res) => {
 
     // If teacher, only show their exams
     if (req.user.role === 'teacher') {
-      const teacherExams = await Exam.find({ creatorId: req.user.userId }).select('_id');
+      const teacherExams = await Exam.find({ createdBy: req.user.userId }).select('_id');
       const examIds = teacherExams.map(e => e._id);
       query.examId = { $in: examIds };
     }
 
     const stats = {
-      totalExams: await Exam.countDocuments(req.user.role === 'teacher' ? { creatorId: req.user.userId } : {}),
+      totalExams: await Exam.countDocuments(req.user.role === 'teacher' ? { createdBy: req.user.userId } : {}),
       totalStudents: await User.countDocuments({ role: 'student' }),
       totalResults: await Result.countDocuments(query),
       avgScore: await Result.aggregate([
         { $match: query },
-        { $group: { _id: null, avg: { $avg: '$score' } } }
+        { $group: { _id: null, avg: { $avg: '$percentage' } } }
       ])
     };
 

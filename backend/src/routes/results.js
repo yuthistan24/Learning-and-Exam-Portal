@@ -24,7 +24,7 @@ router.get('/:examId', authenticateToken, resultController.getStudentResult);
 // Initialize result after submission
 router.post('/:examId/initialize', authenticateToken, resultController.initializeResult);
 
-// Update result with scores
-router.put('/:examId', authenticateToken, resultController.updateResultScores);
+// Update result with scores after manual review
+router.put('/:examId', authenticateToken, authorizeRole('teacher', 'admin'), resultController.updateResultScores);
 
 module.exports = router;

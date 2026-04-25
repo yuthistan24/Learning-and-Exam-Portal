@@ -13,15 +13,27 @@ exports.register = async (req, res) => {
       throw new AppError('Email, password, and name are required', 400);
     }
 
+    if (String(password).length < 8) {
+      throw new AppError('Password must be at least 8 characters long', 400);
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       throw new AppError('Email already registered', 400);
     }
 
-    // Validate role before creating user
-    const validRoles = ['student', 'teacher', 'admin'];
-    const userRole = validRoles.includes(role) ? role : 'student';
+    // Public registration is student-first. Teacher/admin accounts should be
+    // provisioned by admins unless explicitly enabled for a trusted deployment.
+    const requestedRole = role || 'student';
+    if (requestedRole === 'admin') {
+      throw new AppError('Admin accounts must be created by an existing admin', 403);
+    }
+    if (requestedRole === 'teacher' && process.env.ALLOW_TEACHER_SIGNUP !== 'true') {
+      throw new AppError('Teacher accounts must be created by an admin', 403);
+    }
+
+    const userRole = requestedRole === 'teacher' ? 'teacher' : 'student';
 
     // Create new user
     const newUser = new User({
@@ -67,6 +79,10 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email }).select('+passwordHash');
     if (!user) {
       throw new AppError('Invalid credentials', 401);
+    }
+
+    if (!user.isActive) {
+      throw new AppError('This account has been disabled. Contact an administrator.', 403);
     }
 
     // Check password

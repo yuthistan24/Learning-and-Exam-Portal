@@ -86,6 +86,10 @@ class APIClient {
         return this.request('POST', `/exams/${examId}/publish`, {});
     }
 
+    async deleteExam(examId) {
+        return this.request('DELETE', `/exams/${examId}`);
+    }
+
     // Question endpoints
     async addQuestion(examId, questionData) {
         return this.request('POST', `/exams/${examId}/questions`, questionData);
@@ -132,6 +136,33 @@ class APIClient {
             ? `/results/${examId}/report/${studentId}`
             : `/results/${examId}/report`;
         return this.request('GET', path);
+    }
+
+    // Stats endpoints
+    async getStudentStats() {
+        return this.request('GET', '/stats/my-stats');
+    }
+
+    async getGlobalStats() {
+        return this.request('GET', '/stats/global');
+    }
+
+    // Course and learning endpoints
+    async getCourses(semester = null) {
+        const suffix = semester ? `?semester=${semester}` : '';
+        return this.request('GET', `/courses${suffix}`);
+    }
+
+    async getCourse(courseId) {
+        return this.request('GET', `/courses/${courseId}`);
+    }
+
+    async getCourseProgress(courseId) {
+        return this.request('GET', `/courses/${courseId}/progress`);
+    }
+
+    async updateCourseProgress(courseId, unitKey, completed) {
+        return this.request('POST', `/courses/${courseId}/progress`, { unitKey, completed });
     }
 
     // PDF upload and parsing

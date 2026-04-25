@@ -6,6 +6,7 @@
     <title>Login - Global Exams & Learning</title>
     <link rel="stylesheet" href="/src/css/style.css">
     <link rel="stylesheet" href="/src/css/enhanced-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="bg-mesh"></div>
@@ -14,6 +15,11 @@
         <div class="navbar-container">
             <div class="navbar-brand">Global Exams</div>
             <ul class="navbar-menu">
+                <li>
+                    <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
+                        <i class="fas fa-sun"></i>
+                    </button>
+                </li>
                 <li><a href="/login.html">Login</a></li>
                 <li><a href="/signup.html" class="btn btn-primary" style="color:white">Get Started</a></li>
             </ul>
@@ -24,6 +30,12 @@
         <div class="glass-card auth-box">
             <h2>Welcome Back</h2>
             <p class="subtitle">Enter your credentials to access the portal.</p>
+
+            <div style="display:flex; gap:0.5rem; margin-bottom:2rem; background:rgba(255,255,255,0.05); padding:0.4rem; border-radius:12px;">
+                <button onclick="setLoginRole('student')" id="role-btn-student" style="flex:1; border:none; background:var(--accent-primary); color:white; padding:0.6rem; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:0.3s;">Student</button>
+                <button onclick="setLoginRole('teacher')" id="role-btn-teacher" style="flex:1; border:none; background:transparent; color:var(--text-secondary); padding:0.6rem; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:0.3s;">Teacher</button>
+                <button onclick="setLoginRole('admin')" id="role-btn-admin" style="flex:1; border:none; background:transparent; color:var(--text-secondary); padding:0.6rem; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:0.3s;">Admin</button>
+            </div>
             
             <form onsubmit="handleLoginSubmit(event)">
                 <div class="form-group">
@@ -54,6 +66,27 @@
             const el = document.getElementById('error-msg');
             el.textContent = msg;
             el.style.display = 'block';
+        }
+
+        function setLoginRole(role) {
+            const roles = ['student', 'teacher', 'admin'];
+            roles.forEach(r => {
+                const btn = document.getElementById(`role-btn-${r}`);
+                if (r === role) {
+                    btn.style.background = 'var(--accent-primary)';
+                    btn.style.color = 'white';
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = 'var(--text-secondary)';
+                }
+            });
+            // We can pre-fill emails for demo purposes if needed
+            const emailMap = {
+                student: 'student@college.edu',
+                teacher: 'teacher@college.edu',
+                admin: 'admin@college.edu'
+            };
+            document.getElementById('email').value = emailMap[role] || '';
         }
 
         async function handleLoginSubmit(event) {

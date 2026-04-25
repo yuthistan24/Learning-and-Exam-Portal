@@ -14,6 +14,26 @@ const API_URL =
 class APIClient {
   constructor() {
     this.token = localStorage.getItem("token");
+    this.initTheme();
+  }
+
+  initTheme() {
+    const theme = localStorage.getItem('theme') || 'dark';
+    if (theme === 'light') {
+      document.body.classList.add('light');
+    } else {
+      document.body.classList.remove('light');
+    }
+  }
+
+  toggleTheme() {
+    const isLight = document.body.classList.toggle('light');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    // Update icons if present
+    const icon = document.querySelector('.theme-toggle i');
+    if (icon) {
+      icon.className = isLight ? 'fas fa-moon' : 'fas fa-sun';
+    }
   }
 
   async request(method, endpoint, data = null) {
@@ -106,6 +126,10 @@ class APIClient {
     return this.request("POST", `/exams/${examId}/publish`, {});
   }
 
+  async deleteExam(examId) {
+    return this.request("DELETE", `/exams/${examId}`);
+  }
+
   // Question endpoints (mounted under /api/exams)
   async addQuestion(examId, questionData) {
     return this.request("POST", `/exams/${examId}/questions`, questionData);
@@ -140,11 +164,12 @@ class APIClient {
     return this.request("POST", `/answers/${examId}/submit`, {});
   }
 
-  async runCode(examId, questionId, code) {
+  async runCode(examId, questionId, code, input = "") {
     return this.request("POST", "/answers/run-code", {
       examId,
       questionId,
       code,
+      input,
     });
   }
 
@@ -185,6 +210,27 @@ class APIClient {
     return this.request("GET", "/stats/global");
   }
 
+  // Course and learning endpoints
+  async getCourses(semester = null) {
+    const suffix = semester ? `?semester=${semester}` : "";
+    return this.request("GET", `/courses${suffix}`);
+  }
+
+  async getCourse(courseId) {
+    return this.request("GET", `/courses/${courseId}`);
+  }
+
+  async getCourseProgress(courseId) {
+    return this.request("GET", `/courses/${courseId}/progress`);
+  }
+
+  async updateCourseProgress(courseId, unitKey, completed) {
+    return this.request("POST", `/courses/${courseId}/progress`, {
+      unitKey,
+      completed,
+    });
+  }
+
   // PDF upload and parsing
   async uploadPDF(file) {
     const formData = new FormData();
@@ -207,6 +253,10 @@ class APIClient {
 
   async parsePDFText(text) {
     return this.request("POST", "/pdf/parse", { text });
+  }
+
+  async sendChatMessage(message, context = null) {
+    return this.request("POST", "/chat", { message, context });
   }
 
   logout() {

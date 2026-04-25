@@ -26,10 +26,33 @@ const { logger } = require('./utils/logger');
 
 // Create Express app
 const app = express();
+app.disable('x-powered-by');
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+  next();
+});
+app.use((req, res, next) => {
+  const hasUnsafeKeys = (value) => {
+    if (!value || typeof value !== 'object') return false;
+    return Object.keys(value).some(key =>
+      key.startsWith('$') ||
+      key.includes('.') ||
+      hasUnsafeKeys(value[key])
+    );
+  };
+
+  if (hasUnsafeKeys(req.body) || hasUnsafeKeys(req.query)) {
+    return res.status(400).json({ error: { message: 'Invalid request payload', statusCode: 400 } });
+  }
+  next();
+});
 app.use(cors({
   // Accept any localhost origin (port 80, 3000, 5173, etc) + any configured origins
   origin: function(origin, callback) {

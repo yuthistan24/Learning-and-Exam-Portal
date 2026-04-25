@@ -10,6 +10,8 @@ router.get('/users/:userId', authenticateToken, authorizeRole('admin'), adminCon
 router.post('/users', authenticateToken, authorizeRole('admin'), adminController.createUser);
 router.put('/users/:userId', authenticateToken, authorizeRole('admin'), adminController.updateUser);
 router.delete('/users/:userId', authenticateToken, authorizeRole('admin'), adminController.deleteUser);
+router.post('/users/:userId/courses', authenticateToken, authorizeRole('admin'), adminController.assignCourseToUser);
+router.delete('/users/:userId/courses/:courseId', authenticateToken, authorizeRole('admin'), adminController.removeCourseFromUser);
 
 // Teacher can manage their own exams
 router.get('/exams/managed', authenticateToken, authorizeRole('teacher', 'admin'), adminController.getManagedExams);

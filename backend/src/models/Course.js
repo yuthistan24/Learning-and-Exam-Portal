@@ -17,10 +17,15 @@ const courseSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  teacherId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  },
   credits: {
     type: Number,
     required: [true, 'Credits are required'],
-    min: 1
+    min: 0
   },
   category: {
     type: String,
@@ -45,6 +50,20 @@ const courseSchema = new mongoose.Schema({
     marks: {
       type: Number,
       default: 0
+    }
+  }],
+  lessons: [{
+    _id: false,
+    unitNumber: Number,
+    topic: String,
+    summary: String,
+    objectives: [String],
+    keyPoints: [String],
+    activity: String,
+    codingStarter: String,
+    estimatedMinutes: {
+      type: Number,
+      default: 20
     }
   }],
   learningOutcomes: [String],

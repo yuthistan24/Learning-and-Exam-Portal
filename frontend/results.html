@@ -21,9 +21,9 @@
     </nav>
 
     <main class="container">
-        <div style="max-width: 900px; margin-top: 2rem;">
+        <div style="max-width: 980px; margin-top: 2rem;">
             <div class="dashboard-header">
-                <h1>📊 Your Results</h1>
+                <h1>Results</h1>
             </div>
 
             <div id="results-container" style="margin-top: 2rem;">
@@ -37,6 +37,7 @@
     <script src="/src/js/api.legacy.js"></script>
     <script>
         const api = new APIClient();
+        let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             if (!localStorage.getItem('token')) {
@@ -46,94 +47,89 @@
 
             try {
                 const response = await api.getCurrentUser();
-                document.getElementById('user-name').textContent = response.user.name;
-
-                loadAllResults();
+                currentUser = response.user;
+                document.getElementById('user-name').textContent = currentUser.name;
+                await loadResults();
             } catch (error) {
                 console.error('Failed to load user:', error);
                 window.location.href = '/login.html';
             }
         });
 
-        async function loadAllResults() {
+        async function loadResults() {
+            const params = new URLSearchParams(window.location.search);
+            const examId = params.get('examId');
+            const container = document.getElementById('results-container');
+
             try {
-                const examsResponse = await api.getExams();
-                const exams = examsResponse.exams || [];
-                const container = document.getElementById('results-container');
+                const canReview = ['teacher', 'admin'].includes(currentUser.role);
+                const results = examId && canReview
+                    ? await api.getExamResults(examId)
+                    : await api.request('GET', '/results/my-results');
 
-                if (exams.length === 0) {
-                    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: var(--text-secondary);">No exams available</div>';
-                    return;
-                }
-
-                let results = [];
-                for (const exam of exams) {
-                    try {
-                        const resultResponse = await api.getResult(exam._id);
-                        if (resultResponse) {
-                            results.push({...resultResponse, examTitle: exam.title, examId: exam._id});
-                        }
-                    } catch (e) {
-                        // Exam not taken yet
-                    }
-                }
-
-                if (results.length === 0) {
-                    container.innerHTML = '<div class="glass-card" style="text-align: center;"><p>You haven\'t completed any exams yet. Start taking exams to see your results here.</p><a href="/dashboard.html" class="btn btn-primary" style="margin-top: 1rem;">Go to Exams</a></div>';
-                    return;
-                }
-
-                container.innerHTML = results.map(result => {
-                    const percentage = ((result.score / result.totalMarks) * 100).toFixed(1);
-                    const grade = getGrade(percentage);
-                    const isPassing = percentage >= 70;
-
-                    return `
-                        <div class="glass-card" style="margin-bottom: 1.5rem; padding: 2rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1.5rem;">
-                                <div>
-                                    <h3 style="margin-bottom: 0.5rem;">${result.examTitle}</h3>
-                                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Completed on ${new Date(result.submittedAt).toLocaleDateString()} at ${new Date(result.submittedAt).toLocaleTimeString()}</p>
-                                </div>
-                                <span class="status-badge ${isPassing ? 'bg-active' : 'bg-draft'}" style="padding: 0.5rem 1rem; font-size: 1rem;">${grade}</span>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
-                                <div style="background: rgba(59,130,246,0.1); padding: 1rem; border-radius: 8px; text-align: center;">
-                                    <div style="font-size: 2rem; font-weight: bold; color: var(--accent-primary);">${result.score}/${result.totalMarks}</div>
-                                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Score</div>
-                                </div>
-                                <div style="background: ${isPassing ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; padding: 1rem; border-radius: 8px; text-align: center;">
-                                    <div style="font-size: 2rem; font-weight: bold; color: ${isPassing ? 'var(--success)' : 'var(--danger)'};">${percentage}%</div>
-                                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Percentage</div>
-                                </div>
-                                <div style="background: rgba(139,92,246,0.1); padding: 1rem; border-radius: 8px; text-align: center;">
-                                    <div style="font-size: 2rem; font-weight: bold; color: var(--accent-secondary);">${result.questionsAttempted || '0'}</div>
-                                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Questions</div>
-                                </div>
-                            </div>
-
-                            <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-                                <p style="color: var(--text-secondary); margin-bottom: 0.5rem;"><strong>Status:</strong> ${isPassing ? '✅ Passed' : '❌ Failed'}</p>
-                                <p style="color: var(--text-secondary); margin-bottom: 0.5rem;"><strong>Passing Score:</strong> 70%</p>
-                                ${result.feedbackText ? `<p style="color: var(--text-secondary);"><strong>Feedback:</strong> ${result.feedbackText}</p>` : ''}
-                            </div>
-
-                            <div style="margin-top: 1rem; display:flex; gap:0.75rem; flex-wrap:wrap;">
-                                <a href="/result-report.html?examId=${result.examId}" class="btn btn-primary">View Report</a>
-                                <a href="/dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
-                            </div>
+                if (!results || results.length === 0) {
+                    container.innerHTML = `
+                        <div class="glass-card" style="text-align:center;">
+                            <p>${examId && canReview ? 'No submissions yet for this exam.' : 'No completed exams yet.'}</p>
+                            <a href="/dashboard.html" class="btn btn-primary" style="margin-top:1rem;">Back to Dashboard</a>
                         </div>
                     `;
-                }).join('');
+                    return;
+                }
+
+                container.innerHTML = results.map(result => renderResultCard(result, examId)).join('');
             } catch (error) {
                 console.error('Failed to load results:', error);
-                document.getElementById('results-container').innerHTML = '<div class="glass-card" style="text-align: center; color: var(--danger);">Error loading results. Please try again.</div>';
+                container.innerHTML = '<div class="glass-card" style="text-align:center;color:var(--danger);">Error loading results. Please try again.</div>';
             }
         }
 
+        function renderResultCard(result, fallbackExamId) {
+            const exam = result.examId || {};
+            const student = result.studentId || {};
+            const percentage = Number(result.percentage || 0);
+            const isPassing = percentage >= 50;
+            const reportExamId = exam._id || fallbackExamId || exam;
+            const reportHref = ['teacher', 'admin'].includes(currentUser.role) && student._id
+                ? `/result-report.html?examId=${reportExamId}&studentId=${student._id}`
+                : `/result-report.html?examId=${reportExamId}`;
+
+            return `
+                <div class="glass-card" style="margin-bottom:1.5rem;padding:2rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.5rem;">
+                        <div>
+                            <h3 style="margin-bottom:0.5rem;">${exam.title || 'Exam Result'}</h3>
+                            ${student.name ? `<p style="color:var(--text-secondary);margin-bottom:0.25rem;">Student: ${student.name} (${student.email})</p>` : ''}
+                            <p style="color:var(--text-secondary);font-size:0.9rem;">Submitted ${new Date(result.submittedAt).toLocaleString()}</p>
+                        </div>
+                        <span class="status-badge ${isPassing ? 'bg-active' : 'bg-draft'}" style="padding:0.5rem 1rem;font-size:1rem;">${getGrade(percentage)}</span>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin:1.5rem 0;">
+                        <div style="background:rgba(59,130,246,0.1);padding:1rem;border-radius:8px;text-align:center;">
+                            <div style="font-size:2rem;font-weight:bold;color:var(--accent-primary);">${result.totalScore}/${result.totalMarks}</div>
+                            <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem;">Score</div>
+                        </div>
+                        <div style="background:${isPassing ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'};padding:1rem;border-radius:8px;text-align:center;">
+                            <div style="font-size:2rem;font-weight:bold;color:${isPassing ? 'var(--success)' : 'var(--danger)'};">${percentage.toFixed(1)}%</div>
+                            <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem;">Percentage</div>
+                        </div>
+                        <div style="background:rgba(139,92,246,0.1);padding:1rem;border-radius:8px;text-align:center;">
+                            <div style="font-size:2rem;font-weight:bold;color:var(--accent-secondary);">${result.status}</div>
+                            <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem;">Status</div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem;">
+                        <a href="${reportHref}" class="btn btn-primary">View Report</a>
+                        <a href="/dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
+                    </div>
+                </div>
+            `;
+        }
+
         function getGrade(percentage) {
-            const pct = parseFloat(percentage);
+            const pct = Number(percentage);
             if (pct >= 90) return 'A';
             if (pct >= 80) return 'B';
             if (pct >= 70) return 'C';

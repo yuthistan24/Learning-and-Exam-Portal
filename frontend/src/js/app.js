@@ -191,10 +191,20 @@ async function loadQuestions(examId) {
                         <span>Python Editor</span>
                         <button class="btn btn-secondary btn-sm run-btn" onclick="runCode('${examId}', '${question._id}')">▶ Run Code</button>
                     </div>
+                    <div style="display:grid; grid-template-columns:1fr; gap:0.75rem; margin:0.75rem 0;">
+                        <div style="color:var(--text-secondary); font-size:0.9rem;">
+                            Tip: run your code with custom input before submitting. Running also saves your latest code.
+                        </div>
+                        <label style="color:var(--text-secondary); font-size:0.9rem;">
+                            Custom input
+                            <textarea id="input-q${question._id}" rows="3" placeholder="Optional stdin for your test run"></textarea>
+                        </label>
+                    </div>
                     <textarea id="q${question._id}" class="code-textarea" 
                         placeholder="# Write your python code here..." 
                         spellcheck="false"
                         onchange="submitAnswerToServer('${examId}', '${question._id}', this.value)">${question.answerText || ''}</textarea>
+                    <button class="btn btn-secondary btn-sm" style="margin-top:0.75rem;" onclick="submitAnswerToServer('${examId}', '${question._id}', document.getElementById('q${question._id}').value)">Save Code</button>
                     <div id="output-q${question._id}" class="code-output hidden">
                         <div class="output-header">Output:</div>
                         <pre class="output-content"></pre>
@@ -467,6 +477,7 @@ async function viewResults(examId) {
 
 async function runCode(examId, questionId) {
     const textarea = document.getElementById(`q${questionId}`);
+    const inputArea = document.getElementById(`input-q${questionId}`);
     const outputDiv = document.getElementById(`output-q${questionId}`);
     const outputContent = outputDiv.querySelector('.output-content');
     const runBtn = window.event.target;
@@ -481,8 +492,9 @@ async function runCode(examId, questionId) {
         runBtn.textContent = '⌛ Running...';
         outputDiv.classList.remove('hidden');
         outputContent.textContent = 'Executing...';
+        await submitAnswerToServer(examId, questionId, textarea.value);
         
-        const result = await api.runCode(examId, questionId, textarea.value);
+        const result = await api.runCode(examId, questionId, textarea.value, inputArea?.value || '');
         
         if (result.score === 1) {
             outputContent.style.color = 'var(--success)';

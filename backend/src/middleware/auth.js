@@ -1,6 +1,6 @@
-const jwt = require('jsonwebtoken');
 const { AppError } = require('./errorHandler');
 const { logger } = require('../utils/logger');
+const { verifyToken } = require('../services/authService');
 
 const authenticateToken = (req, res, next) => {
   try {
@@ -11,14 +11,14 @@ const authenticateToken = (req, res, next) => {
       throw new AppError('Access token required', 401);
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-      if (err) {
-        logger.warn('Token verification failed:', err.message);
-        throw new AppError('Invalid or expired token', 401);
-      }
+    try {
+      const decoded = verifyToken(token);
       req.user = decoded;
       next();
-    });
+    } catch (err) {
+      logger.warn('Token verification failed:', err.message);
+      throw new AppError('Invalid or expired token', 401);
+    }
   } catch (error) {
     next(error);
   }

@@ -5,12 +5,20 @@ const Question = require('../models/Question');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 
+const canManageExam = (req, exam) => (
+  req.user.role === 'admin' || exam.createdBy.toString() === req.user.userId
+);
+
 // Submit/save answer
 exports.submitAnswer = async (req, res) => {
   try {
     const { examId, questionId } = req.params;
     const { answerText } = req.body;
     const studentId = req.user.userId;
+
+    if (req.user.role !== 'student') {
+      throw new AppError('Only students can submit exam answers', 403);
+    }
 
     // Validate exam and question exist
     const exam = await Exam.findById(examId);
@@ -22,9 +30,12 @@ exports.submitAnswer = async (req, res) => {
     if (!question) {
       throw new AppError('Question not found', 404);
     }
+    if (!question.examId || question.examId.toString() !== examId) {
+      throw new AppError('Question does not belong to this exam', 400);
+    }
 
     // Auto-enroll student on first answer if not enrolled
-    if (!exam.enrolledStudents.includes(studentId)) {
+    if (!exam.enrolledStudents.some(id => id.toString() === studentId)) {
       exam.enrolledStudents.push(studentId);
       await exam.save();
     }
@@ -99,7 +110,7 @@ exports.getQuestionAnswers = async (req, res) => {
     }
 
     const exam = await Exam.findById(question.examId);
-    if (exam.createdBy.toString() !== req.user.userId) {
+    if (!exam || !canManageExam(req, exam)) {
       throw new AppError('Not authorized', 403);
     }
 
@@ -123,7 +134,7 @@ exports.getExamAnswers = async (req, res) => {
       throw new AppError('Exam not found', 404);
     }
 
-    if (exam.createdBy.toString() !== req.user.userId) {
+    if (!canManageExam(req, exam)) {
       throw new AppError('Not authorized', 403);
     }
 
@@ -144,6 +155,10 @@ exports.submitExam = async (req, res) => {
     const { examId } = req.params;
     const studentId = req.user.userId;
     const { timeTakenSeconds, malpractice } = req.body || {};
+
+    if (req.user.role !== 'student') {
+      throw new AppError('Only students can submit exams', 403);
+    }
 
     // Verify exam exists
     const exam = await Exam.findById(examId);
@@ -185,6 +200,9 @@ exports.runCode = async (req, res) => {
     
     if (!code) {
       throw new AppError('Code is required', 400);
+    }
+    if (code.length > 20000) {
+      throw new AppError('Code is too large to execute safely', 400);
     }
 
     let rubric = { method: 'programming' };

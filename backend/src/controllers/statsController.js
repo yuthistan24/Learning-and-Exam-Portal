@@ -9,7 +9,14 @@ exports.getStudentStats = async (req, res) => {
   try {
     const studentId = req.user.userId;
 
-    const results = await Result.find({ studentId }).populate('examId', 'title subject');
+    const user = await User.findById(studentId).populate('courseProgress.courseId', 'title code lessons units');
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const results = await Result.find({ studentId })
+      .populate('examId', 'title subject')
+      .sort({ submittedAt: -1 });
     
     const totalExams = results.length;
     let totalScore = 0;
@@ -39,9 +46,25 @@ exports.getStudentStats = async (req, res) => {
 
     const averagePercentage = totalMarks > 0 ? (totalScore / totalMarks) * 100 : 0;
 
+    const courseProgress = (user.courseProgress || []).map(progress => {
+      const course = progress.courseId;
+      const lessonCount = Math.max(course?.lessons?.length || course?.units?.length || 1, 1);
+      return {
+        courseId: course?._id,
+        code: course?.code,
+        title: course?.title,
+        completedLessons: progress.completedUnits?.length || 0,
+        totalLessons: lessonCount,
+        percentage: Math.round(((progress.completedUnits?.length || 0) / lessonCount) * 100)
+      };
+    });
+
     res.json({
       totalExams,
       averagePercentage: averagePercentage.toFixed(2),
+      enrolledCourses: user.enrolledCourses?.length || 0,
+      completedLessons: courseProgress.reduce((sum, item) => sum + item.completedLessons, 0),
+      courseProgress,
       performanceBySubject: Object.keys(performanceBySubject).map(s => ({
         subject: s,
         percentage: ((performanceBySubject[s].score / performanceBySubject[s].marks) * 100).toFixed(2),
@@ -62,17 +85,24 @@ exports.getStudentStats = async (req, res) => {
 // Get aggregate statistics for teachers/admins
 exports.getGlobalStats = async (req, res) => {
   try {
-    const totalStudents = await User.countDocuments({ role: 'student' });
+    const examFilter = req.user.role === 'teacher' ? { createdBy: req.user.userId } : {};
+    const managedExams = await Exam.find(examFilter).select('_id');
+    const managedExamIds = managedExams.map(exam => exam._id);
+    const resultFilter = req.user.role === 'teacher' ? { examId: { $in: managedExamIds } } : {};
+
+    const totalStudents = await User.countDocuments({ role: 'student', isActive: true });
     const totalTeachers = await User.countDocuments({ role: 'teacher' });
-    const totalExams = await Exam.countDocuments();
+    const totalExams = await Exam.countDocuments(examFilter);
     const totalCourses = await Course.countDocuments();
-    const totalResults = await Result.countDocuments();
+    const totalResults = await Result.countDocuments(resultFilter);
 
     const avgScore = await Result.aggregate([
+      { $match: resultFilter },
       { $group: { _id: null, avg: { $avg: '$percentage' } } }
     ]);
 
     const examPerformance = await Result.aggregate([
+      { $match: resultFilter },
       {
         $group: {
           _id: '$examId',

@@ -11,6 +11,10 @@ const questionSchema = new mongoose.Schema({
     ref: 'Course',
     required: false
   },
+  source: {
+    type: String,
+    default: ''
+  },
   text: {
     type: String,
     required: [true, 'Question text is required']

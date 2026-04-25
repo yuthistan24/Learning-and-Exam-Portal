@@ -292,14 +292,14 @@ Solutions:
 
 ## Database Seed Data
 
-Optional: Load sample data for testing
+Load the admin account, R2024 CSE syllabus courses, interactive lessons, and practice questions:
 
 ```bash
 cd backend
 npm run seed
 ```
 
-(Seed script coming soon)
+Default admin credentials are `admin@college.edu` / `admin12345` unless `DEFAULT_ADMIN_PASSWORD` is set. In Docker, the `backend-seed` service runs this automatically before the backend starts.
 
 ## API Testing with Postman
 

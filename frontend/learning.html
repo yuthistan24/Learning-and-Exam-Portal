@@ -3,168 +3,316 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Learning Portal - CSE Syllabus</title>
+    <title>Learning Portal - Global Exams</title>
     <link rel="stylesheet" href="/src/css/style.css">
+    <link rel="stylesheet" href="/src/css/enhanced-style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="bg-mesh"></div>
 
     <nav class="navbar">
-        <div class="container nav-content">
+        <div class="navbar-container">
             <a href="/dashboard.html" class="logo"><span>Global</span> Exams</a>
-            <ul style="display:flex; list-style:none; gap:1.5rem; align-items:center;">
-                <li><a href="/dashboard.html" class="btn btn-secondary btn-sm">Dashboard</a></li>
-                <li><span id="user-display" style="color:var(--text-muted); font-size:0.9rem;">Student</span></li>
+            <ul class="navbar-menu">
+                <li>
+                    <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
+                        <i class="fas fa-sun"></i>
+                    </button>
+                </li>
+                <li><span id="user-display" style="color:var(--text-secondary); font-size:0.9rem;">Loading...</span></li>
+                <li><a href="/dashboard.html" class="btn btn-secondary">Dashboard</a></li>
             </ul>
         </div>
     </nav>
 
-    <main class="container" style="padding-top: 3rem;">
-        <header style="margin-bottom: 3rem; text-align: center;">
-            <h1 class="gradient-text" style="font-size: 3rem; margin-bottom: 1rem;">CSE Learning Portal</h1>
-            <p style="color:var(--text-muted); font-size:1.1rem; max-width:600px; margin:0 auto;">Explore the CSE syllabus, study by topic, and take practice questions for every unit.</p>
+    <main class="container" style="padding-top:3rem; padding-bottom:5rem;">
+        <header class="glass-card" style="margin-bottom:2rem; overflow:hidden; position:relative;">
+            <div style="max-width:760px;">
+                <p style="color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:0.08em;">R2024 CSE Syllabus</p>
+                <h1 class="gradient-text" style="font-size:clamp(2.2rem, 6vw, 4.5rem); line-height:1; margin:0.4rem 0 1rem;">Learn by doing.</h1>
+                <p style="color:var(--text-muted); font-size:1.1rem;">Browse every seeded course from the syllabus, check off lessons, practice topic questions, and run code without leaving the learning flow.</p>
+            </div>
         </header>
 
-        <section class="glass-card" style="margin-bottom: 3rem; padding: 1.5rem;">
-            <div style="display:flex; justify-content:center; gap:1rem; flex-wrap:wrap;">
-                <button class="btn btn-secondary active semester-btn" onclick="loadSemester(1)">Semester 1</button>
-                <button class="btn btn-secondary semester-btn" onclick="loadSemester(2)">Semester 2</button>
-                <button class="btn btn-secondary semester-btn" onclick="loadSemester(3)">Semester 3</button>
-                <button class="btn btn-secondary semester-btn" onclick="loadSemester(4)">Semester 4</button>
+        <section class="glass-card" style="margin-bottom:2rem;">
+            <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+                <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                    <button class="btn btn-primary semester-btn" onclick="loadSemester(1)">Semester 1</button>
+                    <button class="btn btn-secondary semester-btn" onclick="loadSemester(2)">Semester 2</button>
+                    <button class="btn btn-secondary semester-btn" onclick="loadSemester(3)">Semester 3</button>
+                    <button class="btn btn-secondary semester-btn" onclick="loadSemester(4)">Semester 4</button>
+                </div>
+                <input id="course-search" type="search" placeholder="Search course, code, or topic..." oninput="renderCourses()" style="max-width:360px;">
             </div>
         </section>
 
-        <div id="courses-grid" class="exams-grid">
-            <!-- Courses will be loaded here -->
-        </div>
+        <section id="course-overview">
+            <div id="courses-grid" class="exams-grid">
+                <div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">Loading courses...</div>
+            </div>
+        </section>
 
-        <div id="course-details" class="hidden animate-in" style="margin-top: 4rem;">
-            <div class="glass-card">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <section id="course-details" class="hidden">
+            <div class="glass-card" style="margin-bottom:1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
                     <div>
-                        <h2 id="detail-title">Course Title</h2>
-                        <p id="detail-code" class="gradient-text" style="font-weight:700; margin-top:0.25rem;">CS000</p>
+                        <p id="detail-code" style="color:var(--accent-primary); font-weight:700; margin:0;"></p>
+                        <h2 id="detail-title" style="margin:0.25rem 0 0;"></h2>
+                        <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem; color:var(--text-secondary); font-size:0.9rem;">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            <span id="detail-teacher">Assigned Teacher</span>
+                        </div>
+                        <p id="detail-description" style="color:var(--text-secondary); margin-top:0.75rem;"></p>
                     </div>
-                    <button class="btn btn-secondary btn-sm" onclick="hideDetails()">Back to Courses</button>
+                    <button class="btn btn-secondary" onclick="showOverview()">Back to Courses</button>
                 </div>
-                <hr style="margin:2rem 0; border:none; border-bottom:1px solid var(--border);">
-                
-                <div id="units-container">
-                    <!-- Units and topics will be loaded here -->
+                <div style="margin-top:1.5rem;">
+                    <div style="display:flex; justify-content:space-between; color:var(--text-muted); margin-bottom:0.5rem;">
+                        <span>Learning progress</span>
+                        <span id="progress-label">0%</span>
+                    </div>
+                    <div style="height:10px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden;">
+                        <div id="progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg,var(--success),var(--accent-primary)); transition:width 0.3s;"></div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Practice Question Modal -->
-        <div id="practice-modal" class="modal hidden">
-            <div class="modal-content" style="max-width: 800px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-                    <h3 id="modal-topic-title">Practice: Topic Name</h3>
-                    <button class="btn btn-secondary btn-sm" onclick="closePractice()">Close</button>
-                </div>
-                <div id="practice-questions-container">
-                    <!-- Questions will be loaded here -->
-                </div>
+            <div id="completion-banner" class="hidden animate-in" style="margin-bottom:1.5rem; background:linear-gradient(135deg, var(--success-dark), var(--success)); padding:1.5rem; border-radius:var(--radius-lg); color:white; text-align:center;">
+                <i class="fas fa-certificate" style="font-size:2.5rem; margin-bottom:0.75rem; display:block;"></i>
+                <h3 style="color:white; margin:0 0 0.5rem;">Congratulations!</h3>
+                <p style="color:rgba(255,255,255,0.9); margin-bottom:1.25rem;">You have successfully completed all units of this course.</p>
+                <button class="btn btn-secondary" style="background:white; color:var(--success-dark); border:none;" onclick="alert('Certificate feature coming soon!')">Download Certificate</button>
             </div>
-        </div>
+
+            <div id="units-container" style="display:flex; flex-direction:column; gap:1.5rem;"></div>
+        </section>
     </main>
 
-    <script src="/src/js/api.js"></script>
+    <div id="practice-modal" class="modal hidden">
+        <div class="modal-content" style="max-width:900px;">
+            <div style="display:flex; justify-content:space-between; gap:1rem; align-items:center; margin-bottom:1.5rem;">
+                <h3 id="modal-topic-title">Practice</h3>
+                <button class="btn btn-secondary btn-sm" onclick="closePractice()">Close</button>
+            </div>
+            <div id="practice-questions-container"></div>
+        </div>
+    </div>
+
+    <button onclick="toggleChatbot()" style="position:fixed; bottom:2rem; right:2rem; width:60px; height:60px; border-radius:30px; background:linear-gradient(135deg,var(--primary),var(--secondary)); border:none; box-shadow:0 10px 25px rgba(99,102,241,0.4); color:white; font-size:1.35rem; cursor:pointer; z-index:1000;">AI</button>
+    <div id="chatbot-window" class="hidden glass-card" style="position:fixed; bottom:6rem; right:2rem; width:min(360px, calc(100vw - 2rem)); height:500px; z-index:1000; padding:0; display:flex; flex-direction:column; overflow:hidden;">
+        <div style="padding:1rem; background:rgba(0,0,0,0.35); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h3 style="font-size:1rem; margin:0;">EduBot</h3>
+                <span style="font-size:0.75rem; color:var(--success);">Syllabus helper</span>
+            </div>
+            <button onclick="toggleChatbot()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">x</button>
+        </div>
+        <div id="chat-messages" style="flex:1; padding:1rem; overflow-y:auto;">
+            <div class="chat-bubble">Ask me to explain a topic, make a revision plan, or suggest a coding exercise.</div>
+        </div>
+        <form onsubmit="sendChatResponse(event)" style="padding:1rem; border-top:1px solid var(--border); display:flex; gap:0.5rem;">
+            <input type="text" id="chat-input" placeholder="Ask about this course..." required>
+            <button type="submit" class="btn btn-primary btn-sm">Send</button>
+        </form>
+    </div>
+
+    <script src="/src/js/api.legacy.js"></script>
     <script>
+        const api = new APIClient();
         let currentSemester = 1;
+        let currentCourses = [];
+        let currentCourse = null;
+        let completedLessons = new Set();
 
         document.addEventListener('DOMContentLoaded', async () => {
             if (!localStorage.getItem('token')) {
                 window.location.href = '/login.html';
                 return;
             }
+
             try {
                 const me = await api.getCurrentUser();
-                document.getElementById('user-display').textContent = me.user.name;
-                loadSemester(1);
-            } catch (e) {
+                currentUser = me.user;
+                document.getElementById('user-display').textContent = `${currentUser.name} (${currentUser.role})`;
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const courseId = urlParams.get('courseId');
+                if (courseId) {
+                    await viewCourse(courseId);
+                } else {
+                    await loadSemester(1);
+                }
+            } catch (error) {
+                console.error(error);
                 window.location.href = '/login.html';
             }
         });
 
-        async function loadSemester(sem) {
-            currentSemester = sem;
-            document.querySelectorAll('.semester-btn').forEach((btn, idx) => {
-                btn.classList.toggle('btn-primary', idx + 1 === sem);
-                btn.classList.toggle('btn-secondary', idx + 1 !== sem);
+        async function loadSemester(semester) {
+            currentSemester = semester;
+            document.querySelectorAll('.semester-btn').forEach((button, index) => {
+                const active = index + 1 === semester;
+                button.classList.toggle('btn-primary', active);
+                button.classList.toggle('btn-secondary', !active);
             });
 
-            try {
-                const response = await api.request('GET', `/courses?semester=${sem}`);
-                const container = document.getElementById('courses-grid');
-                container.innerHTML = '';
-                
-                if (response.courses.length === 0) {
-                    container.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:var(--text-muted);">No courses found for this semester.</p>';
-                    return;
-                }
+            const response = await api.getCourses(semester);
+            currentCourses = response.courses || [];
+            showOverview();
+            renderCourses();
+        }
 
-                response.courses.forEach(course => {
-                    const card = document.createElement('div');
-                    card.className = 'glass-card exam-card animate-in';
-                    card.innerHTML = `
-                        <span class="lab" style="color:var(--primary); font-weight:700; font-size:0.8rem;">${course.code}</span>
-                        <h3 class="title" style="margin-top:0.5rem;">${course.title}</h3>
-                        <p style="color:var(--text-muted); font-size:0.9rem; flex:1; margin:1rem 0;">${course.description}</p>
-                        <div class="meta-item"><span>📚 ${course.units.length} Units</span></div>
-                        <button onclick="viewCourse('${course._id}')" class="btn btn-primary" style="margin-top:1.5rem; width:100%;">View Syllabus</button>
-                    `;
-                    container.appendChild(card);
-                });
+        function renderCourses() {
+            const search = document.getElementById('course-search').value.trim().toLowerCase();
+            const courses = currentCourses.filter(course => {
+                const haystack = `${course.code} ${course.title} ${course.description} ${(course.units || []).flatMap(unit => unit.topics || []).join(' ')}`.toLowerCase();
+                const matchesSearch = !search || haystack.includes(search);
                 
-                document.getElementById('course-details').classList.add('hidden');
-                document.getElementById('courses-grid').classList.remove('hidden');
-            } catch (e) {
-                console.error(e);
+                // If student, only show enrolled by default (or show a badge)
+                return matchesSearch;
+            });
+
+            const grid = document.getElementById('courses-grid');
+            if (courses.length === 0) {
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">No courses found for this semester.</div>';
+                return;
             }
+
+            grid.innerHTML = courses.map(course => {
+                const isEnrolled = (currentUser.enrolledCourses || []).some(ec => (ec._id || ec) === course._id);
+                return `
+                    <article class="glass-card exam-card animate-in hover-scale" style="border-top: 4px solid ${isEnrolled ? 'var(--success)' : 'transparent'}">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="color:var(--accent); font-weight:800; font-size:0.85rem;">${escapeHtml(course.code)}</span>
+                            ${isEnrolled ? '<span style="color:var(--success); font-size:0.7rem; font-weight:700;">ENROLLED</span>' : ''}
+                        </div>
+                        <h3 style="margin-top:0.5rem;">${escapeHtml(course.title)}</h3>
+                        <p style="color:var(--text-muted); font-size:0.95rem; flex:1; margin:1rem 0;">${escapeHtml(course.description || '')}</p>
+                        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; color:var(--text-muted); font-size:0.85rem;">
+                            <span>${course.credits} credits</span>
+                            <span>${course.units?.length || 0} units</span>
+                        </div>
+                        <button onclick="viewCourse('${course._id}')" class="btn ${isEnrolled ? 'btn-primary' : 'btn-secondary'}" style="margin-top:1.5rem; width:100%;">
+                            ${isEnrolled ? 'Continue Learning' : 'Preview Course'}
+                        </button>
+                    </article>
+                `;
+            }).join('');
         }
 
         async function viewCourse(courseId) {
-            try {
-                const response = await api.request('GET', `/courses/${courseId}`);
-                const course = response.course;
-                
-                document.getElementById('detail-title').textContent = course.title;
-                document.getElementById('detail-code').textContent = course.code;
-                
-                const container = document.getElementById('units-container');
-                container.innerHTML = '';
-                
-                course.units.forEach(unit => {
-                    const unitElem = document.createElement('div');
-                    unitElem.style.marginBottom = '2.5rem';
-                    unitElem.innerHTML = `
-                        <h3 style="color:var(--text-inverse); font-family:'Outfit'; margin-bottom:1rem;">Unit ${unit.number}: ${unit.title}</h3>
-                        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
-                            ${unit.topics.map(topic => `
-                                <div class="glass-card" style="padding:1.25rem; background:rgba(255,255,255,0.03);">
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <span style="font-weight:600;">${topic}</span>
-                                        <button onclick="startPractice('${courseId}', '${topic}')" class="btn btn-sm btn-primary" style="padding:0.4rem 0.8rem; font-size:0.75rem;">Practice</button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                    container.appendChild(unitElem);
-                });
-                
-                document.getElementById('courses-grid').classList.add('hidden');
-                document.getElementById('course-details').classList.remove('hidden');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            } catch (e) {
-                console.error(e);
-            }
+            const [courseResponse, progressResponse] = await Promise.all([
+                api.getCourse(courseId),
+                api.getCourseProgress(courseId).catch(() => ({ completedUnits: [] }))
+            ]);
+
+            currentCourse = courseResponse.course;
+            completedLessons = new Set(progressResponse.completedUnits || []);
+
+            document.getElementById('detail-code').textContent = currentCourse.code;
+            document.getElementById('detail-title').textContent = currentCourse.title;
+            document.getElementById('detail-description').textContent = currentCourse.description || '';
+            document.getElementById('detail-teacher').textContent = currentCourse.teacherId?.name || 'Academic Faculty';
+            document.getElementById('course-overview').classList.add('hidden');
+            document.getElementById('course-details').classList.remove('hidden');
+            renderCourseDetails();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function hideDetails() {
-            document.getElementById('course-details').classList.add('hidden');
-            document.getElementById('courses-grid').classList.remove('hidden');
+        function renderCourseDetails() {
+            updateProgress();
+            const lessonsByUnit = new Map();
+            (currentCourse.lessons || []).forEach(lesson => {
+                const list = lessonsByUnit.get(lesson.unitNumber) || [];
+                list.push(lesson);
+                lessonsByUnit.set(lesson.unitNumber, list);
+            });
+
+            const units = currentCourse.units || [];
+            document.getElementById('units-container').innerHTML = units.map(unit => {
+                const lessons = lessonsByUnit.get(unit.number) || (unit.topics || []).map(topic => ({ unitNumber: unit.number, topic, summary: '', keyPoints: [], activity: '' }));
+                return `
+                    <section class="glass-card">
+                        <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:flex-start;">
+                            <div>
+                                <p style="color:var(--accent); font-weight:700; margin:0;">Unit ${unit.number}</p>
+                                <h3 style="margin:0.25rem 0 0;">${escapeHtml(unit.title)}</h3>
+                            </div>
+                            <span style="color:var(--text-muted);">${unit.marks || 0} marks</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1rem; margin-top:1.25rem;">
+                            ${lessons.map(lesson => renderLesson(unit, lesson)).join('')}
+                        </div>
+                    </section>
+                `;
+            }).join('');
+        }
+
+        function renderLesson(unit, lesson) {
+            const key = lessonKey(unit.number, lesson.topic);
+            const checked = completedLessons.has(key);
+            const starter = lesson.codingStarter ? `
+                <div class="code-editor-container" style="margin-top:1rem;">
+                    <textarea id="code-${safeId(key)}" rows="8" spellcheck="false" style="font-family:'Courier New',monospace;">${escapeHtml(lesson.codingStarter)}</textarea>
+                    <button class="btn btn-secondary btn-sm" style="margin-top:0.75rem;" onclick="runStarterCode('${safeId(key)}')">Run Starter Code</button>
+                    <pre id="output-${safeId(key)}" class="hidden" style="margin-top:0.75rem; white-space:pre-wrap; color:var(--text-muted);"></pre>
+                </div>
+            ` : '';
+
+            const keyPointsHtml = (lesson.keyPoints || []).length ? `
+                <div style="margin-top:1rem;">
+                    <span style="font-size:0.8rem; font-weight:700; color:var(--accent-primary); text-transform:uppercase;">Key Points</span>
+                    <ul style="margin:0.5rem 0 0 1.2rem; color:var(--text-muted); font-size:0.9rem;">
+                        ${lesson.keyPoints.map(point => `<li>${escapeHtml(point)}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : '';
+
+            const objectivesHtml = (lesson.objectives || []).length ? `
+                <div style="margin-top:0.75rem; font-size:0.85rem; color:var(--text-secondary); background:rgba(255,255,255,0.03); padding:0.5rem; border-radius:8px;">
+                    <strong>Objectives:</strong> ${lesson.objectives.join(', ')}
+                </div>
+            ` : '';
+
+            return `
+                <article style="background:rgba(255,255,255,0.035); border:1px solid ${checked ? 'rgba(16,185,129,0.35)' : 'var(--border)'}; border-radius:16px; padding:1.25rem;">
+                    <label style="display:flex; gap:0.75rem; align-items:flex-start; cursor:pointer;">
+                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleLesson('${key}', this.checked)" style="width:20px; height:20px; margin-top:0.2rem; accent-color:var(--success);">
+                        <span style="flex:1;">
+                            <strong style="display:block; color:var(--text-inverse); font-size:1.1rem;">${escapeHtml(lesson.topic)}</strong>
+                            <span style="display:block; color:var(--text-muted); font-size:0.95rem; margin-top:0.35rem;">${escapeHtml(lesson.summary || 'Study the topic, then attempt practice questions.')}</span>
+                        </span>
+                    </label>
+                    ${objectivesHtml}
+                    ${keyPointsHtml}
+                    <div style="margin-top:1rem; padding:0.9rem; border-radius:12px; background:rgba(34,211,238,0.08); color:var(--text-main); font-size:0.9rem; border-left:3px solid var(--accent);">
+                        <strong>Activity:</strong> ${escapeHtml(lesson.activity || `Write a short note on ${lesson.topic}.`)}
+                    </div>
+                    ${starter}
+                    <button class="btn btn-primary btn-sm" style="margin-top:1rem; width:100%;" onclick="startPractice('${currentCourse._id}', '${escapeAttr(lesson.topic)}')">Practice Topic</button>
+                </article>
+            `;
+        }
+
+        async function toggleLesson(unitKey, completed) {
+            completed ? completedLessons.add(unitKey) : completedLessons.delete(unitKey);
+            updateProgress();
+            await api.updateCourseProgress(currentCourse._id, unitKey, completed);
+        }
+
+        function updateProgress() {
+            const total = Math.max((currentCourse?.lessons || []).length || (currentCourse?.units || []).reduce((acc, u) => acc + (u.topics?.length || 0), 0) || 1, 1);
+            const percent = Math.min(100, Math.round((completedLessons.size / total) * 100));
+            document.getElementById('progress-label').textContent = `${percent}%`;
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+            
+            const banner = document.getElementById('completion-banner');
+            if (percent === 100) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
         }
 
         async function startPractice(courseId, topic) {
@@ -172,47 +320,76 @@
             const container = document.getElementById('practice-questions-container');
             container.innerHTML = '<p style="text-align:center; padding:2rem;">Loading practice questions...</p>';
             document.getElementById('practice-modal').classList.remove('hidden');
-            
+
             try {
                 const response = await api.request('GET', `/courses/questions/${courseId}/${encodeURIComponent(topic)}`);
-                const questions = response.questions;
-                
+                const questions = response.questions || [];
                 if (questions.length === 0) {
-                    container.innerHTML = `
-                        <div style="text-align:center; padding:3rem;">
-                            <p style="color:var(--text-muted);">No questions found for this topic yet.</p>
-                            <button class="btn btn-secondary" style="margin-top:1rem;" onclick="closePractice()">Back</button>
-                        </div>
-                    `;
+                    container.innerHTML = '<p style="text-align:center; color:var(--text-muted);">No practice questions found for this topic yet.</p>';
                     return;
                 }
 
-                container.innerHTML = questions.map((q, i) => `
-                    <div class="glass-card" style="margin-bottom:1.5rem; border-left:4px solid var(--primary);">
-                        <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.5rem;">QUESTION ${i+1} • ${q.type.toUpperCase()}</div>
-                        <div style="font-size:1.1rem; color:var(--text-inverse); margin-bottom:1rem;">${q.text}</div>
-                        <button onclick="this.nextElementSibling.classList.toggle('hidden'); this.style.display='none';" class="btn btn-secondary btn-sm">Show Answer Key</button>
-                        <div class="hidden" style="margin-top:1rem; padding:1rem; background:rgba(16,185,129,0.1); border-radius:8px; border:1px solid rgba(16,185,129,0.2);">
-                            <div style="color:var(--success); font-weight:700; font-size:0.9rem; margin-bottom:0.5rem;">ANSWER KEY:</div>
-                            <div style="color:var(--text-main); font-size:0.95rem;">${q.rubric.answerKey || 'No answer key provided.'}</div>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (e) {
-                container.innerHTML = '<p style="color:var(--danger); text-align:center;">Failed to load questions.</p>';
+                container.innerHTML = questions.map((question, index) => renderPracticeQuestion(question, index)).join('');
+            } catch (error) {
+                container.innerHTML = `<p style="color:var(--danger); text-align:center;">${escapeHtml(error.message)}</p>`;
             }
         }
 
-        // Chatbot functionality
-        let chatContextStr = '';
-        function toggleChatbot() {
-            const chatElem = document.getElementById('chatbot-window');
-            if (chatElem.classList.contains('hidden')) {
-                chatElem.classList.remove('hidden');
-                chatContextStr = document.getElementById('detail-code')?.textContent || '';
-            } else {
-                chatElem.classList.add('hidden');
+        function renderPracticeQuestion(question, index) {
+            const codeArea = question.type === 'programming' ? `
+                <textarea id="practice-code-${question._id}" rows="10" spellcheck="false" style="font-family:'Courier New',monospace;" placeholder="# Write your code here"></textarea>
+                <button class="btn btn-secondary btn-sm" style="margin-top:0.75rem;" onclick="runPracticeCode('${question._id}')">Run Code</button>
+                <pre id="practice-output-${question._id}" class="hidden" style="margin-top:0.75rem; white-space:pre-wrap; color:var(--text-muted);"></pre>
+            ` : '';
+            return `
+                <article class="glass-card" style="margin-bottom:1rem; border-left:4px solid var(--accent);">
+                    <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.5rem;">QUESTION ${index + 1} - ${escapeHtml(question.type)}</div>
+                    <div style="font-size:1.05rem; color:var(--text-inverse); margin-bottom:1rem;">${escapeHtml(question.text)}</div>
+                    ${codeArea}
+                    <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="btn btn-secondary btn-sm" style="margin-top:0.75rem;">Show Answer Guide</button>
+                    <div class="hidden" style="margin-top:1rem; padding:1rem; background:rgba(16,185,129,0.1); border-radius:8px; border:1px solid rgba(16,185,129,0.2);">
+                        ${escapeHtml(question.rubric?.answerKey || 'Try to include the key concept, a short explanation, and a practical example.')}
+                    </div>
+                </article>
+            `;
+        }
+
+        async function runStarterCode(id) {
+            const textarea = document.getElementById(`code-${id}`);
+            const output = document.getElementById(`output-${id}`);
+            await runCodeSnippet(textarea.value, output);
+        }
+
+        async function runPracticeCode(questionId) {
+            const textarea = document.getElementById(`practice-code-${questionId}`);
+            const output = document.getElementById(`practice-output-${questionId}`);
+            await runCodeSnippet(textarea.value, output, questionId);
+        }
+
+        async function runCodeSnippet(code, output, questionId = null) {
+            output.classList.remove('hidden');
+            output.textContent = 'Running...';
+            try {
+                const result = await api.request('POST', '/answers/run-code', { code, input: '', questionId });
+                output.style.color = result.score === 1 ? 'var(--success)' : 'var(--text-muted)';
+                output.textContent = result.feedback || JSON.stringify(result, null, 2);
+            } catch (error) {
+                output.style.color = 'var(--danger)';
+                output.textContent = error.message;
             }
+        }
+
+        function showOverview() {
+            document.getElementById('course-details').classList.add('hidden');
+            document.getElementById('course-overview').classList.remove('hidden');
+        }
+
+        function closePractice() {
+            document.getElementById('practice-modal').classList.add('hidden');
+        }
+
+        function toggleChatbot() {
+            document.getElementById('chatbot-window').classList.toggle('hidden');
         }
 
         async function sendChatResponse(event) {
@@ -220,84 +397,40 @@
             const input = document.getElementById('chat-input');
             const message = input.value.trim();
             if (!message) return;
-            
-            const messagesContainer = document.getElementById('chat-messages');
-            
-            // Add user message
-            messagesContainer.innerHTML += `
-                <div style="margin-bottom:1rem; text-align:right;">
-                    <div style="display:inline-block; background:var(--primary); color:#fff; padding:0.75rem 1rem; border-radius:12px 12px 0 12px; font-size:0.9rem;">
-                        ${message}
-                    </div>
-                </div>
-            `;
-            input.value = '';
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-            // Show typing...
-            const typingId = 'typing-' + Date.now();
-            messagesContainer.innerHTML += `
-                <div id="${typingId}" style="margin-bottom:1rem; text-align:left;">
-                    <div style="display:inline-block; background:var(--bg-surface); color:var(--text-muted); padding:0.75rem 1rem; border-radius:12px 12px 12px 0; font-size:0.9rem;">
-                        EduBot is thinking...
-                    </div>
-                </div>
-            `;
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            const messages = document.getElementById('chat-messages');
+            messages.innerHTML += `<div class="chat-bubble user">${escapeHtml(message)}</div>`;
+            input.value = '';
 
             try {
-                const response = await api.sendChatMessage(message, chatContextStr);
-                document.getElementById(typingId).remove();
-                
-                messagesContainer.innerHTML += `
-                    <div style="margin-bottom:1rem; text-align:left;">
-                        <div style="display:inline-block; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border); padding:0.75rem 1rem; border-radius:12px 12px 12px 0; font-size:0.9rem; line-height:1.5;">
-                            ${response.reply}
-                        </div>
-                    </div>
-                `;
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            } catch (e) {
-                document.getElementById(typingId).remove();
-                messagesContainer.innerHTML += `
-                    <div style="margin-bottom:1rem; text-align:left;">
-                        <div style="display:inline-block; background:rgba(239, 68, 68, 0.1); color:var(--danger); border:1px solid rgba(239, 68, 68, 0.3); padding:0.75rem 1rem; border-radius:12px 12px 12px 0; font-size:0.9rem;">
-                            Failed to reach EduBot. Please try again.
-                        </div>
-                    </div>
-                `;
+                const response = await api.sendChatMessage(message, currentCourse?.code || null);
+                messages.innerHTML += `<div class="chat-bubble">${escapeHtml(response.reply)}</div>`;
+            } catch (error) {
+                messages.innerHTML += `<div class="chat-bubble error">${escapeHtml(error.message)}</div>`;
             }
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function lessonKey(unitNumber, topic) {
+            return `${unitNumber}:${topic}`;
+        }
+
+        function safeId(value) {
+            return value.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+        }
+
+        function escapeAttr(value) {
+            return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
     </script>
-
-    <!-- AI Chatbot Floating Widget -->
-    <button onclick="toggleChatbot()" style="position:fixed; bottom:2rem; right:2rem; width:60px; height:60px; border-radius:30px; background:linear-gradient(135deg, var(--primary), var(--secondary)); border:none; box-shadow:0 10px 25px rgba(99,102,241,0.4); color:white; font-size:1.5rem; cursor:pointer; z-index:1000; display:flex; justify-content:center; align-items:center; transition:transform 0.3s;">
-        🤖
-    </button>
-    <div id="chatbot-window" class="hidden glass-card" style="position:fixed; bottom:6rem; right:2rem; width:350px; height:500px; z-index:1000; padding:0; display:flex; flex-direction:column; overflow:hidden;">
-        <div style="padding:1.25rem; background:rgba(0,0,0,0.4); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:0.75rem;">
-                <span style="font-size:1.5rem;">🤖</span>
-                <div>
-                    <h3 style="font-size:1rem; margin:0;">EduBot AI</h3>
-                    <span style="font-size:0.75rem; color:var(--success);">● Online</span>
-                </div>
-            </div>
-            <button onclick="toggleChatbot()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">×</button>
-        </div>
-        <div id="chat-messages" style="flex:1; padding:1.25rem; overflow-y:auto; display:flex; flex-direction:column;">
-            <div style="margin-bottom:1rem; text-align:left;">
-                <div style="display:inline-block; background:var(--bg-surface); border:1px solid var(--border); padding:0.75rem 1rem; border-radius:12px 12px 12px 0; font-size:0.9rem; line-height:1.5;">
-                    Hi! I'm EduBot. Ask me any questions about your CSE courses, or ask me for coding tips!
-                </div>
-            </div>
-        </div>
-        <form onsubmit="sendChatResponse(event)" style="padding:1rem; border-top:1px solid var(--border); background:rgba(0,0,0,0.3); display:flex; gap:0.5rem;">
-            <input type="text" id="chat-input" placeholder="Type your question..." style="flex:1; padding:0.75rem; border-radius:20px; background:var(--bg-input); border:1px solid var(--border); color:white; font-size:0.9rem;" required>
-            <button type="submit" style="width:40px; height:40px; border-radius:20px; background:var(--primary); color:white; border:none; display:flex; justify-content:center; align-items:center; cursor:pointer;">
-                ➤
-            </button>
-        </form>
-    </div>
 </body>
 </html>
