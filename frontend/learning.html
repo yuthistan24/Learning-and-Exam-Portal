@@ -55,7 +55,7 @@
         </section>
 
         <section id="course-details" class="hidden">
-            <div class="glass-card" style="margin-bottom:1.5rem;">
+            <div id="course-header" class="glass-card" style="margin-bottom:1.5rem;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
                     <div>
                         <p id="detail-code" style="color:var(--accent-primary); font-weight:700; margin:0;"></p>
@@ -66,7 +66,10 @@
                         </div>
                         <p id="detail-description" style="color:var(--text-secondary); margin-top:0.75rem;"></p>
                     </div>
-                    <button class="btn btn-secondary" onclick="showOverview()">Back to Courses</button>
+                    <div style="display:flex; gap:0.75rem;">
+                        <button id="btn-journey" class="btn btn-primary" onclick="startJourney()">Start Learning Journey</button>
+                        <button class="btn btn-secondary" onclick="showOverview()">Back to Courses</button>
+                    </div>
                 </div>
                 <div style="margin-top:1.5rem;">
                     <div style="display:flex; justify-content:space-between; color:var(--text-muted); margin-bottom:0.5rem;">
@@ -84,6 +87,27 @@
                 <h3 style="color:white; margin:0 0 0.5rem;">Congratulations!</h3>
                 <p style="color:rgba(255,255,255,0.9); margin-bottom:1.25rem;">You have successfully completed all units of this course.</p>
                 <button class="btn btn-secondary" style="background:white; color:var(--success-dark); border:none;" onclick="alert('Certificate feature coming soon!')">Download Certificate</button>
+            </div>
+
+            <div id="journey-container" class="hidden">
+                <div style="display:grid; grid-template-columns:300px 1fr; gap:1.5rem; align-items:flex-start;">
+                    <!-- Sidebar Navigation -->
+                    <div class="glass-card" style="padding:1rem; max-height:calc(100vh - 12rem); overflow-y:auto; position:sticky; top:2rem;">
+                        <h4 style="margin-bottom:1rem; font-size:0.9rem; text-transform:uppercase; color:var(--accent);">Course Roadmap</h4>
+                        <div id="journey-map" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+                    </div>
+
+                    <!-- Step Content -->
+                    <div id="step-content">
+                        <div class="glass-card animate-in" style="min-height:400px;">
+                            <div id="step-inner"></div>
+                            <div style="display:flex; justify-content:space-between; margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--border);">
+                                <button id="btn-prev" class="btn btn-secondary" onclick="prevStep()"><i class="fas fa-arrow-left"></i> Previous</button>
+                                <button id="btn-next" class="btn btn-primary" onclick="nextStep()">Next Step <i class="fas fa-arrow-right"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div id="units-container" style="display:flex; flex-direction:column; gap:1.5rem;"></div>
@@ -126,6 +150,8 @@
         let currentCourse = null;
         let completedLessons = new Set();
         let currentUser = null;
+        let currentStepIndex = 0;
+        let journeySteps = [];
 
         document.addEventListener('DOMContentLoaded', async () => {
             if (!localStorage.getItem('token')) {
@@ -143,7 +169,6 @@
                 return;
             }
 
-            // Check if a specific course was requested
             const urlParams = new URLSearchParams(window.location.search);
             const courseId = urlParams.get('courseId');
             if (courseId) {
@@ -178,15 +203,12 @@
             const search = document.getElementById('course-search').value.trim().toLowerCase();
             const courses = currentCourses.filter(course => {
                 const haystack = `${course.code} ${course.title} ${course.description} ${(course.units || []).flatMap(unit => unit.topics || []).join(' ')}`.toLowerCase();
-                const matchesSearch = !search || haystack.includes(search);
-                
-                // If student, only show enrolled by default (or show a badge)
-                return matchesSearch;
+                return !search || haystack.includes(search);
             });
 
             const grid = document.getElementById('courses-grid');
             if (courses.length === 0) {
-                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">No courses found for this semester.</div>';
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted);">No courses found.</div>';
                 return;
             }
 
@@ -225,8 +247,14 @@
             document.getElementById('detail-title').textContent = currentCourse.title;
             document.getElementById('detail-description').textContent = currentCourse.description || '';
             document.getElementById('detail-teacher').textContent = currentCourse.teacherId?.name || 'Academic Faculty';
+            
+            showOverview(); // Reset to overview first
             document.getElementById('course-overview').classList.add('hidden');
             document.getElementById('course-details').classList.remove('hidden');
+            document.getElementById('journey-container').classList.add('hidden');
+            document.getElementById('units-container').classList.remove('hidden');
+            document.getElementById('btn-journey').textContent = completedLessons.size > 0 ? 'Continue Journey' : 'Start Learning Journey';
+
             renderCourseDetails();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -242,7 +270,7 @@
 
             const units = currentCourse.units || [];
             document.getElementById('units-container').innerHTML = units.map(unit => {
-                const lessons = lessonsByUnit.get(unit.number) || (unit.topics || []).map(topic => ({ unitNumber: unit.number, topic, summary: '', keyPoints: [], activity: '' }));
+                const lessons = lessonsByUnit.get(unit.number) || [];
                 return `
                     <section class="glass-card">
                         <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:flex-start;">
@@ -253,57 +281,260 @@
                             <span style="color:var(--text-muted);">${unit.marks || 0} marks</span>
                         </div>
                         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1rem; margin-top:1.25rem;">
-                            ${lessons.map(lesson => renderLesson(unit, lesson)).join('')}
+                            ${lessons.map(lesson => renderLessonCard(unit, lesson)).join('')}
                         </div>
                     </section>
                 `;
             }).join('');
         }
 
-        function renderLesson(unit, lesson) {
+        function renderLessonCard(unit, lesson) {
             const key = lessonKey(unit.number, lesson.topic);
             const checked = completedLessons.has(key);
-            const starter = lesson.codingStarter ? `
-                <div class="code-editor-container" style="margin-top:1rem;">
-                    <textarea id="code-${safeId(key)}" rows="8" spellcheck="false" style="font-family:'Courier New',monospace;">${escapeHtml(lesson.codingStarter)}</textarea>
-                    <button class="btn btn-secondary btn-sm" style="margin-top:0.75rem;" onclick="runStarterCode('${safeId(key)}')">Run Starter Code</button>
-                    <pre id="output-${safeId(key)}" class="hidden" style="margin-top:0.75rem; white-space:pre-wrap; color:var(--text-muted);"></pre>
-                </div>
-            ` : '';
-
-            const keyPointsHtml = (lesson.keyPoints || []).length ? `
-                <div style="margin-top:1rem;">
-                    <span style="font-size:0.8rem; font-weight:700; color:var(--accent-primary); text-transform:uppercase;">Key Points</span>
-                    <ul style="margin:0.5rem 0 0 1.2rem; color:var(--text-muted); font-size:0.9rem;">
-                        ${lesson.keyPoints.map(point => `<li>${escapeHtml(point)}</li>`).join('')}
-                    </ul>
-                </div>
-            ` : '';
-
-            const objectivesHtml = (lesson.objectives || []).length ? `
-                <div style="margin-top:0.75rem; font-size:0.85rem; color:var(--text-secondary); background:rgba(255,255,255,0.03); padding:0.5rem; border-radius:8px;">
-                    <strong>Objectives:</strong> ${lesson.objectives.join(', ')}
-                </div>
-            ` : '';
-
             return `
                 <article style="background:rgba(255,255,255,0.035); border:1px solid ${checked ? 'rgba(16,185,129,0.35)' : 'var(--border)'}; border-radius:16px; padding:1.25rem;">
-                    <label style="display:flex; gap:0.75rem; align-items:flex-start; cursor:pointer;">
-                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleLesson('${key}', this.checked)" style="width:20px; height:20px; margin-top:0.2rem; accent-color:var(--success);">
-                        <span style="flex:1;">
-                            <strong style="display:block; color:var(--text-inverse); font-size:1.1rem;">${escapeHtml(lesson.topic)}</strong>
-                            <span style="display:block; color:var(--text-muted); font-size:0.95rem; margin-top:0.35rem;">${escapeHtml(lesson.summary || 'Study the topic, then attempt practice questions.')}</span>
-                        </span>
-                    </label>
-                    ${objectivesHtml}
-                    ${keyPointsHtml}
-                    <div style="margin-top:1rem; padding:0.9rem; border-radius:12px; background:rgba(34,211,238,0.08); color:var(--text-main); font-size:0.9rem; border-left:3px solid var(--accent);">
-                        <strong>Activity:</strong> ${escapeHtml(lesson.activity || `Write a short note on ${lesson.topic}.`)}
-                    </div>
-                    ${starter}
-                    <button class="btn btn-primary btn-sm" style="margin-top:1rem; width:100%;" onclick="startPractice('${currentCourse._id}', '${escapeAttr(lesson.topic)}')">Practice Topic</button>
+                    <strong style="display:block; color:var(--text-inverse); font-size:1.1rem;">${escapeHtml(lesson.topic)}</strong>
+                    <p style="color:var(--text-muted); font-size:0.9rem; margin:0.5rem 0 1rem;">${escapeHtml(lesson.summary || 'Click below to start learning.')}</p>
+                    <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="startJourneyAt('${key}')">
+                        ${checked ? 'Review Step' : 'Start Step'}
+                    </button>
                 </article>
             `;
+        }
+
+        function buildJourneySteps() {
+            journeySteps = [];
+            currentCourse.units.forEach(unit => {
+                const lessons = currentCourse.lessons.filter(l => l.unitNumber === unit.number);
+                lessons.forEach(lesson => {
+                    journeySteps.push({ type: 'lesson', unit, lesson });
+                    journeySteps.push({ type: 'practice', unit, lesson });
+                });
+                journeySteps.push({ type: 'homework', unit });
+            });
+        }
+
+        function startJourney() {
+            buildJourneySteps();
+            currentStepIndex = 0;
+            // Find first uncompleted step
+            for (let i = 0; i < journeySteps.length; i++) {
+                const step = journeySteps[i];
+                if (step.type === 'lesson') {
+                    if (!completedLessons.has(lessonKey(step.unit.number, step.lesson.topic))) {
+                        currentStepIndex = i;
+                        break;
+                    }
+                }
+            }
+            enterJourneyMode();
+        }
+
+        function startJourneyAt(key) {
+            buildJourneySteps();
+            const [unitNum, topic] = key.split(':');
+            const idx = journeySteps.findIndex(s => s.type === 'lesson' && s.unit.number == unitNum && s.lesson.topic === topic);
+            if (idx !== -1) {
+                currentStepIndex = idx;
+                enterJourneyMode();
+            }
+        }
+
+        function enterJourneyMode() {
+            document.getElementById('units-container').classList.add('hidden');
+            document.getElementById('journey-container').classList.remove('hidden');
+            renderStep();
+            renderJourneyMap();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderJourneyMap() {
+            const map = document.getElementById('journey-map');
+            map.innerHTML = journeySteps.map((step, idx) => {
+                let title = '';
+                let icon = '';
+                let status = idx === currentStepIndex ? 'active' : (idx < currentStepIndex ? 'done' : 'pending');
+                
+                if (step.type === 'lesson') {
+                    title = step.lesson.topic;
+                    icon = 'fa-book-open';
+                } else if (step.type === 'practice') {
+                    title = `Practice: ${step.lesson.topic}`;
+                    icon = 'fa-code';
+                } else {
+                    title = `Homework: Unit ${step.unit.number}`;
+                    icon = 'fa-pencil-alt';
+                }
+
+                const opacity = status === 'pending' ? 0.5 : 1;
+                const border = status === 'active' ? '2px solid var(--accent)' : '1px solid transparent';
+                const bg = status === 'active' ? 'rgba(99,102,241,0.1)' : 'transparent';
+
+                return `
+                    <div onclick="goToStep(${idx})" style="padding:0.6rem; border-radius:8px; border:${border}; background:${bg}; opacity:${opacity}; cursor:pointer; display:flex; gap:0.75rem; align-items:center; transition:0.2s;">
+                        <i class="fas ${icon}" style="width:20px; text-align:center; color:${status === 'done' ? 'var(--success)' : 'inherit'}"></i>
+                        <span style="font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(title)}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function renderStep() {
+            const step = journeySteps[currentStepIndex];
+            const inner = document.getElementById('step-inner');
+            inner.innerHTML = '<p style="text-align:center; padding:3rem;">Loading content...</p>';
+            
+            document.getElementById('btn-prev').disabled = currentStepIndex === 0;
+            document.getElementById('btn-next').textContent = currentStepIndex === journeySteps.length - 1 ? 'Finish Course' : 'Next Step';
+
+            if (step.type === 'lesson') {
+                renderLessonStep(step.unit, step.lesson);
+            } else if (step.type === 'practice') {
+                await renderPracticeStep(step.unit, step.lesson);
+            } else if (step.type === 'homework') {
+                await renderHomeworkStep(step.unit);
+            }
+            renderJourneyMap();
+        }
+
+        function renderLessonStep(unit, lesson) {
+            const key = lessonKey(unit.number, lesson.topic);
+            const starter = lesson.codingStarter ? `
+                <div class="code-editor-container" style="margin-top:2rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                        <span style="font-weight:700; color:var(--text-secondary);">Interactive Playground</span>
+                        <button class="btn btn-secondary btn-sm" onclick="runStarterCode('${safeId(key)}')">Run Code</button>
+                    </div>
+                    <textarea id="code-${safeId(key)}" rows="10" spellcheck="false" style="font-family:'Courier New',monospace; font-size:1rem;">${escapeHtml(lesson.codingStarter)}</textarea>
+                    <pre id="output-${safeId(key)}" class="hidden" style="margin-top:1rem; padding:1rem; background:#000; border-radius:8px; font-family:monospace; color:var(--success);"></pre>
+                </div>
+            ` : '';
+
+            document.getElementById('step-inner').innerHTML = `
+                <p style="color:var(--accent); font-weight:700; margin:0;">Unit ${unit.number}: ${escapeHtml(unit.title)}</p>
+                <h2 style="margin:0.5rem 0 1.5rem;">${escapeHtml(lesson.topic)}</h2>
+                
+                <div class="glass-card" style="background:rgba(255,255,255,0.02); margin-bottom:1.5rem;">
+                    <p style="font-size:1.1rem; line-height:1.6; color:var(--text-main);">${escapeHtml(lesson.summary)}</p>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+                    <div>
+                        <h4 style="color:var(--accent-primary); text-transform:uppercase; font-size:0.8rem; letter-spacing:0.1em; margin-bottom:0.75rem;">Learning Objectives</h4>
+                        <ul style="padding-left:1.2rem; color:var(--text-secondary);">
+                            ${(lesson.objectives || []).map(o => `<li style="margin-bottom:0.4rem;">${escapeHtml(o)}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 style="color:var(--accent-primary); text-transform:uppercase; font-size:0.8rem; letter-spacing:0.1em; margin-bottom:0.75rem;">Key Takeaways</h4>
+                        <ul style="padding-left:1.2rem; color:var(--text-secondary);">
+                            ${(lesson.keyPoints || []).map(k => `<li style="margin-bottom:0.4rem;">${escapeHtml(k)}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+
+                <div style="margin-top:2rem; padding:1.25rem; border-radius:12px; background:rgba(34,211,238,0.08); border-left:4px solid var(--accent);">
+                    <h4 style="margin:0 0 0.5rem; font-size:1rem;">Activity</h4>
+                    <p style="margin:0; line-height:1.5;">${escapeHtml(lesson.activity)}</p>
+                </div>
+
+                ${starter}
+            `;
+        }
+
+        async function renderPracticeStep(unit, lesson) {
+            const inner = document.getElementById('step-inner');
+            inner.innerHTML = `
+                <p style="color:var(--accent); font-weight:700; margin:0;">Practice: ${lesson.topic}</p>
+                <h2 style="margin:0.5rem 0 1.5rem;">Hands-on Exercise</h2>
+                <div id="journey-practice-questions">Loading questions...</div>
+            `;
+
+            try {
+                const response = await api.request('GET', `/courses/questions/${currentCourse._id}/${encodeURIComponent(lesson.topic)}?category=practice`);
+                const questions = response.questions || [];
+                if (questions.length === 0) {
+                    document.getElementById('journey-practice-questions').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:2rem;">No practice problems found for this topic. Feel free to proceed to the next step.</p>';
+                } else {
+                    document.getElementById('journey-practice-questions').innerHTML = questions.map((q, i) => renderJourneyQuestion(q, i)).join('');
+                }
+            } catch (e) {
+                document.getElementById('journey-practice-questions').innerHTML = `<p style="color:var(--danger);">${e.message}</p>`;
+            }
+        }
+
+        async function renderHomeworkStep(unit) {
+            const inner = document.getElementById('step-inner');
+            inner.innerHTML = `
+                <p style="color:var(--accent); font-weight:700; margin:0;">Unit ${unit.number} Recap</p>
+                <h2 style="margin:0.5rem 0 1.5rem;">Homework Assignment</h2>
+                <div id="journey-homework-questions">Loading homework...</div>
+            `;
+
+            try {
+                const response = await api.request('GET', `/courses/homework/${currentCourse._id}/${encodeURIComponent('Unit ' + unit.number)}`);
+                const questions = response.questions || [];
+                if (questions.length === 0) {
+                    document.getElementById('journey-homework-questions').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:2rem;">No homework assigned for this unit.</p>';
+                } else {
+                    document.getElementById('journey-homework-questions').innerHTML = questions.map((q, i) => renderJourneyQuestion(q, i)).join('');
+                }
+            } catch (e) {
+                document.getElementById('journey-homework-questions').innerHTML = `<p style="color:var(--danger);">${e.message}</p>`;
+            }
+        }
+
+        function renderJourneyQuestion(question, index) {
+            const codeArea = question.type === 'programming' ? `
+                <textarea id="j-code-${question._id}" rows="10" spellcheck="false" style="font-family:'Courier New',monospace;" placeholder="Write implementation..."></textarea>
+                <button class="btn btn-secondary btn-sm" style="margin-top:0.75rem;" onclick="runCodeSnippet(document.getElementById('j-code-${question._id}').value, document.getElementById('j-out-${question._id}'), '${question._id}')">Run & Validate</button>
+                <pre id="j-out-${question._id}" class="hidden" style="margin-top:0.75rem; padding:1rem; background:#000; color:var(--success); border-radius:8px;"></pre>
+            ` : `
+                <textarea id="j-ans-${question._id}" rows="4" placeholder="Your answer..."></textarea>
+            `;
+            
+            return `
+                <div class="glass-card" style="margin-bottom:1.5rem; background:rgba(255,255,255,0.01);">
+                    <div style="font-size:0.8rem; color:var(--accent); text-transform:uppercase; margin-bottom:0.5rem;">Task ${index + 1}</div>
+                    <p style="font-size:1.1rem; margin-bottom:1.5rem;">${escapeHtml(question.text)}</p>
+                    ${codeArea}
+                    <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="btn btn-secondary btn-sm" style="margin-top:1rem; opacity:0.6;">Show Hint/Answer</button>
+                    <div class="hidden" style="margin-top:1rem; padding:1rem; background:rgba(16,185,129,0.05); border-radius:8px; color:var(--success); font-size:0.9rem;">
+                        <strong>Guide:</strong> ${escapeHtml(question.rubric?.answerKey || 'Submit your implementation to receive automated feedback.')}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function nextStep() {
+            const step = journeySteps[currentStepIndex];
+            // If it was a lesson, mark it complete
+            if (step.type === 'lesson') {
+                await toggleLesson(lessonKey(step.unit.number, step.lesson.topic), true);
+            }
+
+            if (currentStepIndex < journeySteps.length - 1) {
+                currentStepIndex++;
+                renderStep();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                alert('Course Completed! Amazing job.');
+                showOverview();
+            }
+        }
+
+        function prevStep() {
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                renderStep();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function goToStep(idx) {
+            currentStepIndex = idx;
+            renderStep();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         async function toggleLesson(unitKey, completed) {
@@ -313,56 +544,14 @@
         }
 
         function updateProgress() {
-            const total = Math.max((currentCourse?.lessons || []).length || (currentCourse?.units || []).reduce((acc, u) => acc + (u.topics?.length || 0), 0) || 1, 1);
+            const total = Math.max((currentCourse?.lessons || []).length || 1, 1);
             const percent = Math.min(100, Math.round((completedLessons.size / total) * 100));
             document.getElementById('progress-label').textContent = `${percent}%`;
             document.getElementById('progress-bar').style.width = `${percent}%`;
             
             const banner = document.getElementById('completion-banner');
-            if (percent === 100) {
-                banner.classList.remove('hidden');
-            } else {
-                banner.classList.add('hidden');
-            }
-        }
-
-        async function startPractice(courseId, topic) {
-            document.getElementById('modal-topic-title').textContent = `Practice: ${topic}`;
-            const container = document.getElementById('practice-questions-container');
-            container.innerHTML = '<p style="text-align:center; padding:2rem;">Loading practice questions...</p>';
-            document.getElementById('practice-modal').classList.remove('hidden');
-
-            try {
-                const response = await api.request('GET', `/courses/questions/${courseId}/${encodeURIComponent(topic)}`);
-                const questions = response.questions || [];
-                if (questions.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; color:var(--text-muted);">No practice questions found for this topic yet.</p>';
-                    return;
-                }
-
-                container.innerHTML = questions.map((question, index) => renderPracticeQuestion(question, index)).join('');
-            } catch (error) {
-                container.innerHTML = `<p style="color:var(--danger); text-align:center;">${escapeHtml(error.message)}</p>`;
-            }
-        }
-
-        function renderPracticeQuestion(question, index) {
-            const codeArea = question.type === 'programming' ? `
-                <textarea id="practice-code-${question._id}" rows="10" spellcheck="false" style="font-family:'Courier New',monospace;" placeholder="# Write your code here"></textarea>
-                <button class="btn btn-secondary btn-sm" style="margin-top:0.75rem;" onclick="runPracticeCode('${question._id}')">Run Code</button>
-                <pre id="practice-output-${question._id}" class="hidden" style="margin-top:0.75rem; white-space:pre-wrap; color:var(--text-muted);"></pre>
-            ` : '';
-            return `
-                <article class="glass-card" style="margin-bottom:1rem; border-left:4px solid var(--accent);">
-                    <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:0.5rem;">QUESTION ${index + 1} - ${escapeHtml(question.type)}</div>
-                    <div style="font-size:1.05rem; color:var(--text-inverse); margin-bottom:1rem;">${escapeHtml(question.text)}</div>
-                    ${codeArea}
-                    <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="btn btn-secondary btn-sm" style="margin-top:0.75rem;">Show Answer Guide</button>
-                    <div class="hidden" style="margin-top:1rem; padding:1rem; background:rgba(16,185,129,0.1); border-radius:8px; border:1px solid rgba(16,185,129,0.2);">
-                        ${escapeHtml(question.rubric?.answerKey || 'Try to include the key concept, a short explanation, and a practical example.')}
-                    </div>
-                </article>
-            `;
+            if (percent === 100) banner.classList.remove('hidden');
+            else banner.classList.add('hidden');
         }
 
         async function runStarterCode(id) {
@@ -371,19 +560,13 @@
             await runCodeSnippet(textarea.value, output);
         }
 
-        async function runPracticeCode(questionId) {
-            const textarea = document.getElementById(`practice-code-${questionId}`);
-            const output = document.getElementById(`practice-output-${questionId}`);
-            await runCodeSnippet(textarea.value, output, questionId);
-        }
-
         async function runCodeSnippet(code, output, questionId = null) {
             output.classList.remove('hidden');
             output.textContent = 'Running...';
             try {
                 const result = await api.request('POST', '/answers/run-code', { code, input: '', questionId });
                 output.style.color = result.score === 1 ? 'var(--success)' : 'var(--text-muted)';
-                output.textContent = result.feedback || JSON.stringify(result, null, 2);
+                output.textContent = result.feedback || 'Code executed successfully.';
             } catch (error) {
                 output.style.color = 'var(--danger)';
                 output.textContent = error.message;
@@ -395,10 +578,6 @@
             document.getElementById('course-overview').classList.remove('hidden');
         }
 
-        function closePractice() {
-            document.getElementById('practice-modal').classList.add('hidden');
-        }
-
         function toggleChatbot() {
             document.getElementById('chatbot-window').classList.toggle('hidden');
         }
@@ -408,11 +587,9 @@
             const input = document.getElementById('chat-input');
             const message = input.value.trim();
             if (!message) return;
-
             const messages = document.getElementById('chat-messages');
             messages.innerHTML += `<div class="chat-bubble user">${escapeHtml(message)}</div>`;
             input.value = '';
-
             try {
                 const response = await api.sendChatMessage(message, currentCourse?.code || null);
                 messages.innerHTML += `<div class="chat-bubble">${escapeHtml(response.reply)}</div>`;
@@ -422,25 +599,10 @@
             messages.scrollTop = messages.scrollHeight;
         }
 
-        function lessonKey(unitNumber, topic) {
-            return `${unitNumber}:${topic}`;
-        }
-
-        function safeId(value) {
-            return value.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-        }
-
-        function escapeAttr(value) {
-            return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        }
-
+        function lessonKey(unitNumber, topic) { return `${unitNumber}:${topic}`; }
+        function safeId(value) { return value.replace(/[^a-z0-9]/gi, '-').toLowerCase(); }
         function escapeHtml(value) {
-            return String(value ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+            return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
         }
     </script>
 </body>

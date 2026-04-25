@@ -24,6 +24,11 @@ const questionSchema = new mongoose.Schema({
     enum: ['mcq', 'short_answer', 'long_answer', 'math', 'programming'],
     default: 'short_answer'
   },
+  category: {
+    type: String,
+    enum: ['exam', 'practice', 'homework'],
+    default: 'exam'
+  },
   marks: {
     type: Number,
     required: [true, 'Marks for question is required'],

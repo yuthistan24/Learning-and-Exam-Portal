@@ -38,18 +38,22 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Get practice questions for a course topic. This route must stay before /:id.
+// Get practice questions for a course topic.
 router.get('/questions/:courseId/:topic', authenticateToken, async (req, res) => {
   try {
     const { courseId, topic } = req.params;
+    const { category = 'practice' } = req.query;
     if (!isObjectId(courseId)) {
       return res.status(400).json({ success: false, message: 'Invalid course id' });
     }
 
-    const questions = await Question.find({
+    const query = {
       courseId,
+      category,
       ...topicMatches(topic)
-    }).limit(12);
+    };
+
+    const questions = await Question.find(query).limit(12);
 
     const safeQuestions = questions.map(question => {
       const q = question.toObject();
@@ -60,6 +64,26 @@ router.get('/questions/:courseId/:topic', authenticateToken, async (req, res) =>
     });
 
     res.json({ success: true, questions: safeQuestions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get homework questions for a course unit.
+router.get('/homework/:courseId/:unit', authenticateToken, async (req, res) => {
+  try {
+    const { courseId, unit } = req.params;
+    if (!isObjectId(courseId)) {
+      return res.status(400).json({ success: false, message: 'Invalid course id' });
+    }
+
+    const questions = await Question.find({
+      courseId,
+      category: 'homework',
+      unit: { $regex: escapeRegex(unit), $options: 'i' }
+    });
+
+    res.json({ success: true, questions });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
