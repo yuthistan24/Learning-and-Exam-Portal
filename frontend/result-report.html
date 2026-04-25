@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Evaluation Report - Global Exams</title>
-    <link rel="stylesheet" href="/src/css/style.css">
-    <link rel="stylesheet" href="/src/css/enhanced-style.css">
+    <link rel="stylesheet" href="src/css/style.css">
+    <link rel="stylesheet" href="src/css/enhanced-style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 
     <nav class="navbar">
         <div class="navbar-container">
-            <a href="/dashboard.html" class="logo"><span>Global</span> Exams</a>
+            <a href="dashboard.html" class="logo"><span>Global</span> Exams</a>
             <ul class="navbar-menu">
                 <li>
                     <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
@@ -21,7 +21,7 @@
                     </button>
                 </li>
                 <li><span id="user-display" style="color:var(--text-secondary); font-size:0.9rem;">Loading...</span></li>
-                <li><a href="/dashboard.html" class="btn btn-secondary">Dashboard</a></li>
+                <li><a href="dashboard.html" class="btn btn-secondary">Dashboard</a></li>
             </ul>
         </div>
     </nav>
@@ -57,14 +57,14 @@
         </section>
     </main>
 
-    <script src="/src/js/api.legacy.js"></script>
+    <script src="src/js/api.legacy.js"></script>
     <script>
         const api = new APIClient();
         let reportData = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             if (!localStorage.getItem('token')) {
-                window.location.href = '/login.html';
+                window.location.href = 'login.html';
                 return;
             }
 
@@ -72,7 +72,7 @@
             const examId = params.get('examId');
             const studentId = params.get('studentId');
             if (!examId) {
-                window.location.href = '/results.html';
+                window.location.href = 'results.html';
                 return;
             }
 

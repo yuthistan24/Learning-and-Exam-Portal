@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up - Global Exams & Learning</title>
-    <link rel="stylesheet" href="/src/css/style.css">
-    <link rel="stylesheet" href="/src/css/enhanced-style.css">
+    <link rel="stylesheet" href="src/css/style.css">
+    <link rel="stylesheet" href="src/css/enhanced-style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
                         <i class="fas fa-sun"></i>
                     </button>
                 </li>
-                <li><a href="/login.html">Login</a></li>
+                <li><a href="login.html">Login</a></li>
             </ul>
         </div>
     </nav>
@@ -66,12 +66,12 @@
             </form>
 
             <div class="auth-link">
-                Already have an account? <a href="/login.html">Log in</a>
+                Already have an account? <a href="login.html">Log in</a>
             </div>
         </div>
     </main>
 
-    <script src="/src/js/api.legacy.js"></script>
+    <script src="src/js/api.legacy.js"></script>
     <script>
         const api = new APIClient();
 
@@ -125,7 +125,7 @@
                 btn.textContent = 'Creating Account...';
                 btn.disabled = true;
                 await api.register(email, password, name, role);
-                window.location.href = '/dashboard.html';
+                window.location.href = 'dashboard.html';
             } catch (error) {
                 showError('Registration failed: ' + (error.message || 'Could not connect to server'));
                 btn.textContent = 'Create Account';
@@ -135,7 +135,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('token')) {
-                window.location.href = '/dashboard.html';
+                window.location.href = 'dashboard.html';
             }
         });
     </script>

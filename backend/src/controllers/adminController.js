@@ -195,12 +195,21 @@ exports.deleteUser = async (req, res) => {
       throw new AppError('You cannot delete your own admin account', 400);
     }
 
-    await User.findByIdAndDelete(req.params.userId);
+    // Cascade delete: remove results and answers
+    // If it's a student, remove their results. 
+    // If it's a teacher, we might keep their exams but they'll be orphaned. 
+    // Better to prevent deletion or reassign if there are active exams, 
+    // but for this implementation we'll allow it and just clean up results.
+    await Promise.all([
+      Result.deleteMany({ userId: user._id }),
+      Answer.deleteMany({ userId: user._id }),
+      User.findByIdAndDelete(req.params.userId)
+    ]);
 
-    logger.info(`Admin deleted user: ${user.email}`);
+    logger.info(`Admin deleted user: ${user.email} and all associated data.`);
 
     res.json({
-      message: 'User deleted successfully',
+      message: 'User and associated data deleted successfully',
       deletedUser: user.email
     });
   } catch (error) {

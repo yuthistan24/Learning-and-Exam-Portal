@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Learning Portal - Global Exams</title>
-    <link rel="stylesheet" href="/src/css/style.css">
-    <link rel="stylesheet" href="/src/css/enhanced-style.css">
+    <link rel="stylesheet" href="src/css/style.css">
+    <link rel="stylesheet" href="src/css/enhanced-style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 
     <nav class="navbar">
         <div class="navbar-container">
-            <a href="/dashboard.html" class="logo"><span>Global</span> Exams</a>
+            <a href="dashboard.html" class="logo"><span>Global</span> Exams</a>
             <ul class="navbar-menu">
                 <li>
                     <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
@@ -21,7 +21,7 @@
                     </button>
                 </li>
                 <li><span id="user-display" style="color:var(--text-secondary); font-size:0.9rem;">Loading...</span></li>
-                <li><a href="/dashboard.html" class="btn btn-secondary">Dashboard</a></li>
+                <li><a href="dashboard.html" class="btn btn-secondary">Dashboard</a></li>
             </ul>
         </div>
     </nav>
@@ -38,10 +38,11 @@
         <section class="glass-card" style="margin-bottom:2rem;">
             <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">
                 <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                    <button class="btn btn-primary semester-btn" onclick="loadSemester(1)">Semester 1</button>
-                    <button class="btn btn-secondary semester-btn" onclick="loadSemester(2)">Semester 2</button>
-                    <button class="btn btn-secondary semester-btn" onclick="loadSemester(3)">Semester 3</button>
-                    <button class="btn btn-secondary semester-btn" onclick="loadSemester(4)">Semester 4</button>
+                    <button class="btn btn-primary semester-btn" onclick="loadSemester(0)">All</button>
+                    <button class="btn btn-secondary semester-btn" onclick="loadSemester(1)">Sem 1</button>
+                    <button class="btn btn-secondary semester-btn" onclick="loadSemester(2)">Sem 2</button>
+                    <button class="btn btn-secondary semester-btn" onclick="loadSemester(3)">Sem 3</button>
+                    <button class="btn btn-secondary semester-btn" onclick="loadSemester(4)">Sem 4</button>
                 </div>
                 <input id="course-search" type="search" placeholder="Search course, code, or topic..." oninput="renderCourses()" style="max-width:360px;">
             </div>
@@ -117,17 +118,18 @@
         </form>
     </div>
 
-    <script src="/src/js/api.legacy.js"></script>
+    <script src="src/js/api.legacy.js"></script>
     <script>
         const api = new APIClient();
-        let currentSemester = 1;
+        let currentSemester = 0;
         let currentCourses = [];
         let currentCourse = null;
         let completedLessons = new Set();
+        let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             if (!localStorage.getItem('token')) {
-                window.location.href = '/login.html';
+                window.location.href = 'login.html';
                 return;
             }
 
@@ -135,29 +137,38 @@
                 const me = await api.getCurrentUser();
                 currentUser = me.user;
                 document.getElementById('user-display').textContent = `${currentUser.name} (${currentUser.role})`;
-                
-                const urlParams = new URLSearchParams(window.location.search);
-                const courseId = urlParams.get('courseId');
-                if (courseId) {
-                    await viewCourse(courseId);
-                } else {
-                    await loadSemester(1);
-                }
             } catch (error) {
-                console.error(error);
-                window.location.href = '/login.html';
+                console.error('Auth failed:', error);
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Check if a specific course was requested
+            const urlParams = new URLSearchParams(window.location.search);
+            const courseId = urlParams.get('courseId');
+            if (courseId) {
+                try {
+                    await viewCourse(courseId);
+                } catch(e) {
+                    console.error('Failed to load course:', e);
+                    await loadSemester(0);
+                }
+            } else {
+                await loadSemester(0);
             }
         });
 
         async function loadSemester(semester) {
             currentSemester = semester;
-            document.querySelectorAll('.semester-btn').forEach((button, index) => {
-                const active = index + 1 === semester;
+            const buttons = document.querySelectorAll('.semester-btn');
+            const semesterValues = [0, 1, 2, 3, 4];
+            buttons.forEach((button, index) => {
+                const active = semesterValues[index] === semester;
                 button.classList.toggle('btn-primary', active);
                 button.classList.toggle('btn-secondary', !active);
             });
 
-            const response = await api.getCourses(semester);
+            const response = await api.getCourses(semester === 0 ? null : semester);
             currentCourses = response.courses || [];
             showOverview();
             renderCourses();

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Exam Analytics - Global Exams</title>
-    <link rel="stylesheet" href="/src/css/style.css">
-    <link rel="stylesheet" href="/src/css/enhanced-style.css">
+    <link rel="stylesheet" href="src/css/style.css">
+    <link rel="stylesheet" href="src/css/enhanced-style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .analytics-grid {
@@ -84,7 +84,7 @@
 
     <nav class="navbar">
         <div class="navbar-container">
-            <a href="/dashboard.html" class="logo"><span>Global</span> Exams</a>
+            <a href="dashboard.html" class="logo"><span>Global</span> Exams</a>
             <ul class="navbar-menu">
                 <li>
                     <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
@@ -92,7 +92,7 @@
                     </button>
                 </li>
                 <li><span id="user-display" style="color:var(--text-secondary); font-size:0.9rem;">Loading...</span></li>
-                <li><a href="/dashboard.html" class="btn btn-secondary">Dashboard</a></li>
+                <li><a href="dashboard.html" class="btn btn-secondary">Dashboard</a></li>
             </ul>
         </div>
     </nav>
@@ -159,6 +159,23 @@
             </div>
         </section>
 
+        <section style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-top:2rem;">
+            <div class="glass-card">
+                <h2 style="margin-top:0;"><i class="fas fa-trophy" style="color:var(--warning); margin-right:0.5rem;"></i>Top Performers</h2>
+                <div id="top-performers-list" style="display:flex; flex-direction:column; gap:1rem;">
+                    <!-- Populated by JS -->
+                    <div style="color:var(--text-secondary);">Loading rankings...</div>
+                </div>
+            </div>
+            <div class="glass-card">
+                <h2 style="margin-top:0;"><i class="fas fa-exclamation-triangle" style="color:var(--danger); margin-right:0.5rem;"></i>Attention Required</h2>
+                <div id="low-performers-list" style="display:flex; flex-direction:column; gap:1rem;">
+                    <!-- Populated by JS -->
+                    <div style="color:var(--text-secondary);">Loading...</div>
+                </div>
+            </div>
+        </section>
+
         <section class="glass-card" style="margin-top:2rem;">
             <h2 style="margin-top:0;">Student Performance</h2>
             <div style="overflow-x:auto;">
@@ -181,7 +198,7 @@
         </section>
     </main>
 
-    <script src="/src/js/api.legacy.js"></script>
+    <script src="src/js/api.legacy.js"></script>
     <script>
         const api = new APIClient();
         let examId = null;
@@ -190,7 +207,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             examId = urlParams.get('examId');
             if (!examId) {
-                window.location.href = '/dashboard.html';
+                window.location.href = 'dashboard.html';
                 return;
             }
 
@@ -251,10 +268,40 @@
 
         function renderStudentResults(results) {
             const sTableBody = document.querySelector('#student-stats-table tbody');
+            const topList = document.getElementById('top-performers-list');
+            const lowList = document.getElementById('low-performers-list');
+
             if (!results || results.length === 0) {
                 sTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No student submissions yet.</td></tr>';
+                topList.innerHTML = '<div style="color:var(--text-secondary);">No data</div>';
+                lowList.innerHTML = '<div style="color:var(--text-secondary);">No data</div>';
                 return;
             }
+
+            // Sort results for top/low performers
+            const sorted = [...results].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+            const top3 = sorted.slice(0, 3);
+            const low3 = sorted.filter(r => (r.percentage || 0) < 40).slice(-3);
+
+            topList.innerHTML = top3.map((r, i) => `
+                <div style="display:flex; align-items:center; gap:1rem; padding:0.75rem; background:rgba(255,255,255,0.03); border-radius:12px;">
+                    <div style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; background:var(--warning); color:black; border-radius:50%; font-weight:800; font-size:0.8rem;">${i+1}</div>
+                    <div style="flex:1;">
+                        <div style="font-weight:600;">${escapeHtml(r.studentId?.name || 'Unknown')}</div>
+                        <div style="font-size:0.8rem; color:var(--text-secondary);">${r.percentage}%</div>
+                    </div>
+                </div>
+            `).join('') || '<div style="color:var(--text-secondary);">No high scores yet</div>';
+
+            lowList.innerHTML = low3.map(r => `
+                <div style="display:flex; align-items:center; gap:1rem; padding:0.75rem; background:rgba(255,255,255,0.03); border-radius:12px;">
+                    <div style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; background:rgba(239,68,68,0.2); color:var(--danger); border-radius:50%; font-weight:800; font-size:0.8rem;"><i class="fas fa-user"></i></div>
+                    <div style="flex:1;">
+                        <div style="font-weight:600;">${escapeHtml(r.studentId?.name || 'Unknown')}</div>
+                        <div style="font-size:0.8rem; color:var(--danger);">${r.percentage}% (Below threshold)</div>
+                    </div>
+                </div>
+            `).join('') || '<div style="color:var(--text-secondary);">No students below threshold</div>';
 
             sTableBody.innerHTML = results.map(r => {
                 const percentage = r.percentage || 0;
@@ -276,7 +323,7 @@
                             </span>
                         </td>
                         <td>
-                            <a href="/result-report.html?examId=${examId}&studentId=${r.studentId?._id}" class="btn btn-secondary btn-sm">View Details</a>
+                            <a href="result-report.html?examId=${examId}&studentId=${r.studentId?._id}" class="btn btn-secondary btn-sm">View Details</a>
                         </td>
                     </tr>
                 `;
@@ -285,7 +332,7 @@
 
         function logout() {
             api.logout();
-            window.location.href = '/login.html';
+            window.location.href = 'login.html';
         }
 
         function escapeHtml(text) {

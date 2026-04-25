@@ -2,12 +2,12 @@
 
 services:
   # MongoDB Database
-  mongodb:
+  mongo:
     image: mongo:6.0
     container_name: global-exams-db
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "27018:27017"
     environment:
       MONGO_INITDB_DATABASE: global-exams
     volumes:
@@ -15,7 +15,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,13 +28,13 @@ services:
     ports:
       - "8081:8081"
     environment:
-      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_SERVER: mongo
       ME_CONFIG_MONGODB_PORT: 27017
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: admin123
       ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
     depends_on:
-      mongodb:
+      mongo:
         condition: service_healthy
     networks:
       - app-network
@@ -49,12 +49,12 @@ services:
       - "5000:5000"
     environment:
       NODE_ENV: production
-      MONGODB_URI: mongodb://mongodb:27017/global-exams
+      MONGODB_URI: mongodb://mongo:27017/global-exams
       JWT_SECRET: ${JWT_SECRET:-change-this-jwt-secret-before-production}
       PYTHON_SERVICE_URL: http://python-service:8000
       ALLOWED_ORIGINS: http://localhost:80,http://localhost,http://localhost:5173
     depends_on:
-      mongodb:
+      mongo:
         condition: service_healthy
       backend-seed:
         condition: service_completed_successfully
@@ -73,15 +73,15 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: global-exams-seed
-    restart: "no"
+    restart: on-failure
     command: ["npm", "run", "seed"]
     environment:
       NODE_ENV: production
-      MONGODB_URI: mongodb://mongodb:27017/global-exams
+      MONGODB_URI: mongodb://mongo:27017/global-exams
       JWT_SECRET: ${JWT_SECRET:-change-this-jwt-secret-before-production}
       DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-admin12345}
     depends_on:
-      mongodb:
+      mongo:
         condition: service_healthy
     networks:
       - app-network

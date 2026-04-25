@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proctored Exam - Global Exams</title>
-    <link rel="stylesheet" href="/src/css/style.css">
-    <link rel="stylesheet" href="/src/css/enhanced-style.css">
+    <link rel="stylesheet" href="src/css/style.css">
+    <link rel="stylesheet" href="src/css/enhanced-style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="/src/js/api.legacy.js"></script>
-    <script src="/src/js/proctor.js"></script>
-    <script src="/src/js/app.js"></script>
+    <script src="src/js/api.legacy.js"></script>
+    <script src="src/js/proctor.js"></script>
+    <script src="src/js/app.js"></script>
 </head>
 <body style="background-color: var(--bg-primary);">
     <div class="bg-mesh"></div>
@@ -64,14 +64,14 @@
             const targetExamId = urlParams.get('id');
             
             if (!localStorage.getItem('token') || !targetExamId) {
-                window.location.href = '/login.html';
+                window.location.href = 'login.html';
                 return;
             }
 
             // Start standard exam protocol from app.js
             startExam(targetExamId).catch(err => {
                 alert("Failed to securely load exam env: " + err.message);
-                window.location.href = '/dashboard.html';
+                window.location.href = 'dashboard.html';
             });
         });
     </script>
