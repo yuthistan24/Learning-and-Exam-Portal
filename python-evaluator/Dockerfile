@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11-bookworm
 
 WORKDIR /app
 
@@ -10,8 +10,16 @@ ENV TRANSFORMERS_OFFLINE=true \
     LLM_PROVIDER=ollama \
     LLM_API_KEY=""
 
-# Install system dependencies (tesseract for offline OCR)
-RUN apt-get update && apt-get install -y gcc tesseract-ocr tesseract-ocr-eng && rm -rf /var/lib/apt/lists/*
+# Increase robustness of package installation
+# Switched to non-slim base to include gcc/g++ and reduce download requirements
+RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
+    printf "Types: deb\nURIs: http://ftp.us.debian.org/debian\nSuites: bookworm bookworm-updates\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n\nTypes: deb\nURIs: http://security.debian.org/debian-security\nSuites: bookworm-security\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg" > /etc/apt/sources.list.d/debian.sources
+
+# Install missing system dependencies (JDK and Tesseract)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends --fix-missing \
+    default-jdk tesseract-ocr tesseract-ocr-eng && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
 COPY requirements.txt .

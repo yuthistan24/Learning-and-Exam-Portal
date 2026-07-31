@@ -24,6 +24,16 @@ const questionSchema = new mongoose.Schema({
     enum: ['mcq', 'short_answer', 'long_answer', 'math', 'programming'],
     default: 'short_answer'
   },
+  subject: {
+    type: String,
+    enum: ['general', 'coding', 'math', 'english', 'science', 'history', 'geography', 'commerce'],
+    default: 'general'
+  },
+  difficulty: {
+    type: Number,
+    enum: [1, 2, 3], // 1: Beginner, 2: Intermediate, 3: Expert
+    default: 1
+  },
   category: {
     type: String,
     enum: ['exam', 'practice', 'homework'],
@@ -46,7 +56,7 @@ const questionSchema = new mongoose.Schema({
     answerKey: String,
     method: {
       type: String,
-      enum: ['exact', 'keyword', 'semantic', 'math', 'programming'],
+      enum: ['exact', 'keyword', 'semantic', 'math', 'programming', 'ai'],
       default: 'keyword'
     },
     sampleAnswers: [String],

@@ -1,756 +1,971 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Global Exams & Learning Portal</title>
-    <link rel="stylesheet" href="src/css/style.css">
-    <link rel="stylesheet" href="src/css/enhanced-style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Global Exams</title>
+  <meta name="description" content="Manage exams, track progress, and view AI-powered evaluation results.">
+  <link rel="stylesheet" href="src/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body { padding-top: var(--navbar-height); }
+    .section-sep { height: 1px; background: var(--border); margin: 2.5rem 0; }
+
+    /* AI Panel */
+    .eval-grid { display: flex; flex-direction: column; gap: 0.625rem; }
+    .eval-item {
+      display: grid; grid-template-columns: 1fr auto auto auto;
+      align-items: center; gap: 1rem;
+      padding: 0.875rem 1rem;
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      transition: all 0.2s;
+    }
+    .eval-item:hover { border-color: var(--border); background: var(--bg-hover); }
+    .eval-item-q { font-size: 0.875rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .eval-item-sub { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
+
+    /* Status pill */
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 0.4rem;
+    }
+    .status-active  { background: var(--success); }
+    .status-draft   { background: var(--text-tertiary); }
+    .status-pending { background: var(--warning); }
+    .status-failed  { background: var(--danger); }
+  </style>
 </head>
 <body>
-    <div class="bg-mesh"></div>
+<div class="bg-mesh"></div>
+<div id="toast-container"></div>
 
-    <nav class="navbar">
-        <div class="navbar-container">
-            <div class="navbar-brand">Global Exams</div>
-            <ul class="navbar-menu">
-                <li>
-                    <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
-                        <i class="fas fa-sun"></i>
-                    </button>
-                </li>
-                <li><span class="user-name" id="user-name">Loading...</span></li>
-                <li><a href="#" onclick="logout()" class="btn btn-secondary" style="color:var(--text-secondary)">Logout</a></li>
-            </ul>
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-container">
+    <a href="index.html" class="navbar-brand">
+      <i class="fas fa-graduation-cap"></i> Global Exams
+    </a>
+    <div style="display:flex; align-items:center; gap:1rem">
+      <span style="font-size:0.85rem; color:var(--text-secondary)">
+        <i class="fas fa-user-circle" style="margin-right:0.4rem"></i>
+        <span id="user-name">Loading…</span>
+      </span>
+      <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle theme">
+        <i class="fas fa-sun"></i>
+      </button>
+      <button onclick="logout()" class="btn btn-ghost btn-sm">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- App layout -->
+<div class="app-layout">
+  <!-- Sidebar (populated via JS per role) -->
+  <aside class="sidebar" id="sidebar">
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <!-- AI Status -->
+    <div style="padding:1rem 1.25rem; border-top:1px solid var(--border); font-size:0.75rem; color:var(--text-tertiary)">
+      <div id="ai-status-indicator" style="display:flex;align-items:center;gap:0.4rem">
+        <span class="status-dot status-pending"></span> Checking AI…
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content">
+
+    <!-- ══ STUDENT DASHBOARD ══════════════════════════════════════ -->
+    <div id="student-dashboard" class="hidden animate-in">
+      <div class="dashboard-header">
+        <div>
+          <h1>👋 Welcome Back, <span id="student-name">Student</span>!</h1>
+          <p>Track your progress and continue learning.</p>
         </div>
-    </nav>
+        <a href="learning.html" class="btn btn-secondary">
+          <i class="fas fa-book-open"></i> Learning Portal
+        </a>
+      </div>
 
-    <main class="container">
-        <!-- Student Dashboard -->
-        <section id="student-dashboard" class="hidden">
-            <div class="dashboard-header">
-                <div>
-                    <h1>📚 Learning Portal</h1>
-                    <p style="color: var(--text-secondary);">Welcome! Take exams and track your progress.</p>
-                </div>
-                <div style="display:flex; gap:1rem;">
-                    <a href="learning.html" class="btn btn-secondary">📘 Learning Portal</a>
-                </div>
-            </div>
-
-            <div class="stats-grid" style="margin-top: 2rem;">
-                <div class="glass-card stat-card">
-                    <span class="val" id="stats-total-exams">0</span>
-                    <span class="lab">Exams Attempted</span>
-                </div>
-                <div class="glass-card stat-card">
-                    <span class="val" id="stats-avg-score">0%</span>
-                    <span class="lab">Average Score</span>
-                </div>
-                <div class="glass-card stat-card">
-                    <span class="val" id="stats-total-courses">0</span>
-                    <span class="lab">Syllabus Courses</span>
-                </div>
-                <div class="glass-card stat-card">
-                    <span class="val" id="stats-completed-lessons">0</span>
-                    <span class="lab">Topics Completed</span>
-                </div>
-            </div>
-
-            <div style="margin-top: 3rem;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-                    <h2>📘 My Courses & Progress</h2>
-                    <a href="learning.html" class="btn btn-secondary btn-sm">Explore All Courses</a>
-                </div>
-                <div id="student-courses-list" class="exams-grid">
-                    <div style="text-align: center;padding: 2rem;color: var(--text-secondary);">Loading your progress...</div>
-                </div>
-            </div>
-
-            <div style="margin-top: 2rem;">
-                <h2>Available Exams</h2>
-                <div id="student-exams-list" class="exams-grid">
-                    <div style="text-align: center;padding: 2rem;color: var(--text-secondary);">Loading exams...</div>
-                </div>
-            </div>
-
-            <div style="margin-top: 3rem;">
-                <h2>My Results</h2>
-                <div id="student-results" class="exams-grid">
-                    <div style="text-align: center;padding: 2rem;color: var(--text-secondary);">Loading results...</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Teacher Dashboard -->
-        <section id="teacher-dashboard" class="hidden">
-            <div class="dashboard-header">
-                <div>
-                    <h1>👨‍🏫 Teacher Dashboard</h1>
-                    <p style="color: var(--text-secondary);">Manage exams and monitor student progress.</p>
-                </div>
-                <button onclick="showCreateExamModal()" class="btn btn-primary">+ Create Exam</button>
-            </div>
-
-            <div class="stats-grid" style="margin-top: 2rem;">
-                <div class="glass-card stat-card">
-                    <span class="val" id="teacher-total-exams">0</span>
-                    <span class="lab">Managed Exams</span>
-                </div>
-                <div class="glass-card stat-card">
-                    <span class="val" id="teacher-total-students">0</span>
-                    <span class="lab">Students</span>
-                </div>
-                <div class="glass-card stat-card">
-                    <span class="val" id="teacher-total-results">0</span>
-                    <span class="lab">Attempts</span>
-                </div>
-                <div class="glass-card stat-card">
-                    <span class="val" id="teacher-average-score">0%</span>
-                    <span class="lab">Average Score</span>
-                </div>
-            </div>
-
-            <div style="margin-top: 2rem;">
-                <h2>My Exams</h2>
-                <div id="teacher-exams-list" class="exams-grid">
-                    <div style="text-align: center;padding: 2rem;color: var(--text-secondary);">Loading exams...</div>
-                </div>
-            </div>
-
-            <div style="margin-top: 3rem;">
-                <h2>🎓 Student Progress Overview</h2>
-                <div id="teacher-student-progress" class="exams-grid" style="margin-top:1rem;">
-                    <div style="text-align: center;padding: 2rem;color: var(--text-secondary);">Loading student analytics...</div>
-                </div>
-            </div>
-
-            <div style="margin-top: 3rem;">
-                <h2>📚 Courses I Manage</h2>
-                <div id="teacher-assigned-courses" class="exams-grid" style="margin-top:1rem;">
-                    <div style="text-align: center;padding: 2rem;color: var(--text-secondary);">Loading assigned courses...</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Admin Dashboard -->
-        <section id="admin-dashboard" class="hidden">
-            <div class="dashboard-header">
-                <div>
-                    <h1>⚙️ Admin Dashboard</h1>
-                    <p style="color: var(--text-secondary);">System administration and user management.</p>
-                </div>
-            </div>
-
-            <div style="display: grid;grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));gap: 1.5rem;margin-top: 2rem;">
-                <div class="glass-card">
-                    <div style="font-size: 2.5rem;font-weight: bold;color: var(--accent-primary);" id="stat-users">0</div>
-                    <div style="color: var(--text-secondary);margin-top: 0.5rem;">Total Users</div>
-                </div>
-                <div class="glass-card">
-                    <div style="font-size: 2.5rem;font-weight: bold;color: var(--accent-secondary);" id="stat-exams">0</div>
-                    <div style="color: var(--text-secondary);margin-top: 0.5rem;">Total Exams</div>
-                </div>
-                <div class="glass-card">
-                    <div style="font-size: 2.5rem;font-weight: bold;color: var(--success);" id="stat-results">0</div>
-                    <div style="color: var(--text-secondary);margin-top: 0.5rem;">Total Attempts</div>
-                </div>
-                <div class="glass-card">
-                    <div style="font-size: 2.5rem;font-weight: bold;color: var(--warning);" id="stat-courses">0</div>
-                    <div style="color: var(--text-secondary);margin-top: 0.5rem;">Active Courses</div>
-                </div>
-            </div>
-
-            <h3 style="margin-top: 2rem;">User Management</h3>
-            <div style="margin-bottom: 1rem;">
-                <a href="admin.html" class="btn btn-secondary" style="margin-right:0.5rem;">Open Admin Panel</a>
-                <button onclick="showCreateUserModal()" class="btn btn-primary">+ Add User</button>
-            </div>
-            <div id="admin-users-list" style="overflow-x: auto;">
-                <table style="width: 100%;border-collapse: collapse;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--border);">
-                            <th style="padding: 1rem;text-align: left;color: var(--text-secondary);">Name</th>
-                            <th style="padding: 1rem;text-align: left;color: var(--text-secondary);">Email</th>
-                            <th style="padding: 1rem;text-align: left;color: var(--text-secondary);">Role</th>
-                            <th style="padding: 1rem;text-align: left;color: var(--text-secondary);">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admin-users-tbody">
-                        <tr><td colspan="4" style="padding: 1rem;text-align: center;color: var(--text-secondary);">Loading...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- Tasks Section -->
-        <section class="animate-in" style="margin-top: 3rem; margin-bottom: 5rem;">
-            <div class="glass-card" style="padding: 2rem;">
-                <h2 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; font-family: 'Outfit';">
-                    <span style="font-size: 1.5rem;">📝</span> My Task Checklist
-                </h2>
-                <div id="tasks-container" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">
-                    <!-- Tasks will be loaded here -->
-                </div>
-                <form onsubmit="handleAddTask(event)" style="display: flex; gap: 1rem;">
-                    <input type="text" id="task-input" placeholder="What needs to be done?" 
-                        style="flex: 1; padding: 0.8rem 1.2rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; outline: none;" required>
-                    <button type="submit" class="btn btn-primary" style="padding: 0 1.5rem;">Add Task</button>
-                </form>
-            </div>
-        </section>
-    </main>
-
-    <!-- Modals -->
-    <div id="create-exam-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Create New Exam</h3>
-            <form onsubmit="handleCreateExam(event)">
-                <div class="form-group">
-                    <label>Exam Title</label>
-                    <input type="text" id="exam-title" required>
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="exam-description" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Subject (Syllabus)</label>
-                    <select id="exam-subject" required></select>
-                </div>
-                <div class="form-group">
-                    <label>Duration (minutes)</label>
-                    <input type="number" id="exam-duration" required min="1" value="60">
-                </div>
-                <div class="form-group">
-                    <label>Total Marks</label>
-                    <input type="number" id="exam-total-marks" required min="1" value="100">
-                </div>
-                <div style="display: flex;gap: 1rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Create</button>
-                    <button type="button" onclick="hideModal('create-exam-modal')" class="btn btn-secondary" style="flex: 1;">Cancel</button>
-                </div>
-            </form>
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="glass-card stat-card">
+          <span class="val" id="stats-total-exams">0</span>
+          <span class="lab">Exams Attempted</span>
         </div>
+        <div class="glass-card stat-card">
+          <span class="val" id="stats-avg-score">0%</span>
+          <span class="lab">Average Score</span>
+        </div>
+        <div class="glass-card stat-card">
+          <span class="val" id="stats-total-courses">0</span>
+          <span class="lab">Enrolled Courses</span>
+        </div>
+        <div class="glass-card stat-card">
+          <span class="val" id="stats-completed-lessons">0</span>
+          <span class="lab">Topics Completed</span>
+        </div>
+      </div>
+
+      <!-- Available Exams -->
+      <div style="margin-top:2.5rem">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
+          <h2>Available Exams</h2>
+          <span id="exam-count" class="badge badge-blue">0 exams</span>
+        </div>
+        <div id="student-exams-list" class="exams-grid">
+          <div class="glass-card" style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-secondary)">
+            <div class="spinner" style="margin:0 auto 1rem"></div> Loading exams…
+          </div>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- Courses -->
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
+          <h2>My Courses &amp; Progress</h2>
+          <a href="learning.html" class="btn btn-ghost btn-sm">
+            <i class="fas fa-arrow-right"></i> All Courses
+          </a>
+        </div>
+        <div id="student-courses-list" class="exams-grid">
+          <div class="glass-card" style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-secondary)">
+            <div class="spinner" style="margin:0 auto 1rem"></div> Loading courses…
+          </div>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- My Results -->
+      <div>
+        <h2 style="margin-bottom:1.25rem">My Exam Results</h2>
+        <div id="student-results" class="exams-grid">
+          <div class="glass-card" style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-secondary)">
+            <div class="spinner" style="margin:0 auto 1rem"></div> Loading results…
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div id="create-user-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Create New User</h3>
-            <form onsubmit="handleCreateUser(event)">
-                <div class="form-group">
-                    <label>Full Name</label>
-                    <input type="text" id="new-user-name" required>
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="new-user-email" required>
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="new-user-password" required minlength="8">
-                </div>
-                <div class="form-group">
-                    <label>Role</label>
-                    <select id="new-user-role" required>
-                        <option value="student">Student</option>
-                        <option value="teacher">Teacher</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>
-                <div style="display: flex;gap: 1rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Create</button>
-                    <button type="button" onclick="hideModal('create-user-modal')" class="btn btn-secondary" style="flex: 1;">Cancel</button>
-                </div>
-            </form>
+    <!-- ══ TEACHER DASHBOARD ══════════════════════════════════════ -->
+    <div id="teacher-dashboard" class="hidden animate-in">
+      <div class="dashboard-header">
+        <div>
+          <h1><i class="fas fa-chalkboard-teacher" style="color:var(--accent-primary)"></i> Teacher Dashboard</h1>
+          <p>Manage exams, monitor AI evaluation, and track student progress.</p>
         </div>
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap">
+          <button onclick="showCreateExamModal()" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Create Exam
+          </button>
+          <a href="manage-exam.html" class="btn btn-secondary">
+            <i class="fas fa-list"></i> All Exams
+          </a>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="glass-card stat-card">
+          <span class="val" id="teacher-total-exams">0</span>
+          <span class="lab">My Exams</span>
+        </div>
+        <div class="glass-card stat-card">
+          <span class="val" id="teacher-total-students">0</span>
+          <span class="lab">Students</span>
+        </div>
+        <div class="glass-card stat-card">
+          <span class="val" id="teacher-total-results">0</span>
+          <span class="lab">Submissions</span>
+        </div>
+        <div class="glass-card stat-card">
+          <span class="val" id="teacher-average-score">0%</span>
+          <span class="lab">Average Score</span>
+        </div>
+      </div>
+
+      <!-- My Exams -->
+      <div style="margin-top:2.5rem">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
+          <h2>My Exams</h2>
+        </div>
+        <div id="teacher-exams-list" class="exams-grid">
+          <div class="glass-card" style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-secondary)">
+            <div class="spinner" style="margin:0 auto 1rem"></div> Loading exams…
+          </div>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- AI Evaluation Status Panel (Teacher-exclusive) -->
+      <div id="ai-eval-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
+          <div>
+            <h2 style="margin-bottom:0.25rem">
+              <i class="fas fa-robot" style="color:var(--accent-primary)"></i> AI Evaluation Status
+            </h2>
+            <p class="text-sm text-muted">Live per-student grading by Ollama models.</p>
+          </div>
+          <div id="ai-eval-filter" style="display:flex; gap:0.5rem">
+            <select id="eval-exam-select" class="btn btn-secondary btn-sm" style="min-width:180px; padding:0.45rem 0.75rem"
+                    onchange="loadEvalStatus(this.value)">
+              <option value="">Select exam…</option>
+            </select>
+            <button onclick="refreshEvalStatus()" class="btn btn-ghost btn-sm">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+        </div>
+        <div id="eval-status-content">
+          <div class="glass-card" style="text-align:center; padding:3rem; color:var(--text-secondary)">
+            <i class="fas fa-robot" style="font-size:2.5rem; margin-bottom:1rem; opacity:0.3"></i>
+            <p>Select an exam to view AI evaluation progress</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-sep"></div>
+
+      <!-- Student Progress -->
+      <div>
+        <h2 style="margin-bottom:1.25rem">
+          <i class="fas fa-users" style="color:var(--accent-secondary)"></i> Student Progress
+        </h2>
+        <div id="teacher-student-progress">
+          <div class="glass-card" style="text-align:center;padding:2rem;color:var(--text-secondary)">
+            <div class="spinner" style="margin:0 auto 1rem"></div> Loading students…
+          </div>
+        </div>
+      </div>
     </div>
 
-    <script src="src/js/syllabus.legacy.js"></script>
-    <script src="src/js/api.legacy.js"></script>
-    <script>
-        const api = new APIClient();
-        let currentUser = null;
+    <!-- ══ ADMIN DASHBOARD ════════════════════════════════════════ -->
+    <div id="admin-dashboard" class="hidden animate-in">
+      <div class="dashboard-header">
+        <div>
+          <h1><i class="fas fa-shield-alt" style="color:var(--danger)"></i> Admin Console</h1>
+          <p>System administration and user management.</p>
+        </div>
+        <div style="display:flex; gap:0.75rem">
+          <a href="admin.html" class="btn btn-secondary"><i class="fas fa-cog"></i> Admin Panel</a>
+          <button onclick="showCreateUserModal()" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> Add User
+          </button>
+        </div>
+      </div>
 
-        function manageQuestions(examId) {
-            window.location.href = `manage-exam.html?id=${examId}`;
-        }
+      <div class="stats-grid">
+        <div class="glass-card stat-card">
+          <span class="val" id="stat-users">0</span>
+          <span class="lab">Total Users</span>
+        </div>
+        <div class="glass-card stat-card">
+          <span class="val" id="stat-exams">0</span>
+          <span class="lab">Total Exams</span>
+        </div>
+        <div class="glass-card stat-card">
+          <span class="val" id="stat-results">0</span>
+          <span class="lab">Submissions</span>
+        </div>
+        <div class="glass-card stat-card">
+          <span class="val" id="stat-courses">0</span>
+          <span class="lab">Active Courses</span>
+        </div>
+      </div>
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (!localStorage.getItem('token')) {
-                window.location.href = 'login.html';
-                return;
-            }
+      <div style="margin-top:2.5rem">
+        <h2 style="margin-bottom:1.25rem">User Management</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-tbody">
+              <tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-secondary)">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
-            try {
-                const response = await api.getCurrentUser();
-                currentUser = response.user;
-                document.getElementById('user-name').textContent = currentUser.name;
+  </main>
+</div>
 
-                if (currentUser.role === 'student') {
-                    document.getElementById('student-dashboard').classList.remove('hidden');
-                    loadStudentExams();
-                    loadStudentResults();
-                    loadStudentCourses();
-                } else if (currentUser.role === 'teacher') {
-                    document.getElementById('teacher-dashboard').classList.remove('hidden');
-                    loadTeacherStats();
-                    loadTeacherExams();
-                    loadStudentProgress();
-                    loadTeacherAssignedCourses();
-                } else if (currentUser.role === 'admin') {
-                    document.getElementById('admin-dashboard').classList.remove('hidden');
-                    loadAdminDashboard();
-                }
-            } catch (error) {
-                console.error('Failed to load user:', error);
-                logout();
-            }
-        });
+<!-- ══ MODALS ════════════════════════════════════════════════════ -->
 
-        async function loadStudentExams() {
-            try {
-                const response = await api.getExams();
-                const container = document.getElementById('student-exams-list');
-                
-                if (!container) return;
-                
-                container.innerHTML = '';
-                if (!response.exams || response.exams.length === 0) {
-                    container.innerHTML = '<div style="grid-column: 1/-1;text-align: center;padding: 2rem;color: var(--text-secondary);">No exams available yet</div>';
-                } else {
-                    response.exams.forEach(exam => {
-                        const examCard = document.createElement('div');
-                        examCard.className = 'glass-card exam-card animate-in hover-scale';
-                        examCard.innerHTML = `
-                            <div class="lab" style="color:var(--primary); font-weight:700; font-size:0.8rem;">${exam.subject || 'EXAM'}</div>
-                            <h3 class="title" style="margin-top:0.5rem;">${exam.title}</h3>
-                            <p class="desc" style="margin:1rem 0;">${exam.description}</p>
-                            <div class="meta">
-                                <div class="meta-item"><span>⏱ ${exam.duration}m</span></div>
-                                <div class="meta-item"><span>🎯 ${exam.totalMarks} Marks</span></div>
-                            </div>
-                            <button onclick="startExam('${exam._id}')" class="btn btn-primary" style="margin-top:1.5rem; width:100%;" ${exam.status !== 'active' ? 'disabled' : ''}>
-                                ${exam.status === 'active' ? 'Start Exam' : 'Not Active'}
-                            </button>
-                        `;
-                        container.appendChild(examCard);
-                    });
-                }
+<!-- Create Exam Modal -->
+<div class="modal-overlay" id="create-exam-modal" onclick="closeModal('create-exam-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-plus" style="color:var(--accent-primary)"></i> Create New Exam</h3>
+      <button class="modal-close" onclick="closeModal('create-exam-modal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <form onsubmit="handleCreateExam(event)">
+      <div class="form-group">
+        <label for="exam-title">Exam Title</label>
+        <input type="text" id="exam-title" required placeholder="e.g. Data Structures Midterm">
+      </div>
+      <div class="form-group">
+        <label for="exam-description">Description</label>
+        <textarea id="exam-description" required placeholder="Brief description of the exam…"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="exam-subject">Subject</label>
+        <select id="exam-subject" required>
+          <option value="">Select subject…</option>
+          <option value="general">General</option>
+          <option value="coding">Coding / Programming</option>
+          <option value="math">Mathematics</option>
+          <option value="english">English / Literature</option>
+          <option value="science">Science</option>
+          <option value="history">History</option>
+          <option value="geography">Geography</option>
+          <option value="commerce">Commerce</option>
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem">
+        <div class="form-group">
+          <label for="exam-duration">Duration (min)</label>
+          <input type="number" id="exam-duration" required min="5" value="60">
+        </div>
+        <div class="form-group">
+          <label for="exam-total-marks">Total Marks</label>
+          <input type="number" id="exam-total-marks" required min="1" value="100">
+        </div>
+      </div>
+      <div style="display:flex; gap:0.75rem; margin-top:0.5rem">
+        <button type="submit" class="btn btn-primary" style="flex:1">
+          <i class="fas fa-check"></i> Create Exam
+        </button>
+        <button type="button" onclick="closeModal('create-exam-modal')" class="btn btn-secondary" style="flex:1">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
-                // Load stats as well
-                loadStudentStats();
-            } catch (error) {
-                console.error('Failed to load exams:', error);
-            }
-        }
+<!-- Create User Modal (Admin) -->
+<div class="modal-overlay" id="create-user-modal" onclick="closeModal('create-user-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-user-plus" style="color:var(--accent-primary)"></i> Create User</h3>
+      <button class="modal-close" onclick="closeModal('create-user-modal')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <form onsubmit="handleCreateUser(event)">
+      <div class="form-group">
+        <label for="new-user-name">Full Name</label>
+        <input type="text" id="new-user-name" required placeholder="Jane Smith">
+      </div>
+      <div class="form-group">
+        <label for="new-user-email">Email</label>
+        <input type="email" id="new-user-email" required placeholder="jane@college.edu">
+      </div>
+      <div class="form-group">
+        <label for="new-user-password">Password</label>
+        <input type="password" id="new-user-password" required minlength="8" placeholder="Minimum 8 characters">
+      </div>
+      <div class="form-group">
+        <label for="new-user-role">Role</label>
+        <select id="new-user-role" required>
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:0.75rem">
+        <button type="submit" class="btn btn-primary" style="flex:1">
+          <i class="fas fa-check"></i> Create User
+        </button>
+        <button type="button" onclick="closeModal('create-user-modal')" class="btn btn-secondary" style="flex:1">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
-        async function loadStudentStats() {
-            try {
-                const stats = await api.getStudentStats();
-                document.getElementById('stats-total-exams').textContent = stats.totalExams || 0;
-                document.getElementById('stats-avg-score').textContent = (stats.averagePercentage || 0) + '%';
-                document.getElementById('stats-completed-lessons').textContent = currentUser.courseProgress?.reduce((acc, c) => acc + (c.completedUnits?.length || 0), 0) || 0;
-                
-                const courses = await api.request('GET', '/courses');
-                document.getElementById('stats-total-courses').textContent = courses.courses?.length || 0;
-            } catch (error) {
-                console.error('Failed to load stats:', error);
-            }
-        }
+<script src="src/js/syllabus.legacy.js"></script>
+<script src="src/js/api.legacy.js"></script>
+<script>
+let currentUser = null;
+let teacherExams = [];
 
-        async function loadStudentCourses() {
-            try {
-                const coursesResponse = await api.request('GET', '/courses');
-                const container = document.getElementById('student-courses-list');
-                const allCourses = coursesResponse.courses || [];
+// ── Sidebar nav per role ─────────────────────────────────────────────────────
+const SIDEBARS = {
+  student: [
+    { icon: 'fas fa-tachometer-alt', label: 'Dashboard',     href: '#',            active: true },
+    { icon: 'fas fa-clipboard-list', label: 'Available Exams', href: '#exams-sec' },
+    { icon: 'fas fa-book-open',      label: 'Learning Portal',  href: 'learning.html' },
+    { icon: 'fas fa-chart-line',     label: 'My Results',       href: 'result-report.html' },
+    { icon: 'fas fa-user-circle',    label: 'Profile',          href: 'profile.html' },
+  ],
+  teacher: [
+    { icon: 'fas fa-tachometer-alt', label: 'Dashboard',        href: '#', active: true },
+    { icon: 'fas fa-file-alt',       label: 'My Exams',         href: 'manage-exam.html' },
+    { icon: 'fas fa-robot',          label: 'AI Evaluation',    href: 'exam-analytics.html' },
+    { icon: 'fas fa-users',          label: 'Students',         href: '#students-sec' },
+    { icon: 'fas fa-question-circle', label: 'Question Bank',   href: 'manage-exam.html' },
+    { icon: 'fas fa-chart-bar',      label: 'Analytics',        href: 'exam-analytics.html' },
+  ],
+  admin: [
+    { icon: 'fas fa-tachometer-alt', label: 'Dashboard',        href: '#', active: true },
+    { icon: 'fas fa-users-cog',      label: 'User Management',  href: 'admin.html' },
+    { icon: 'fas fa-file-alt',       label: 'All Exams',        href: 'manage-exam.html' },
+    { icon: 'fas fa-chart-pie',      label: 'System Stats',     href: '#' },
+  ],
+};
 
-                if (allCourses.length === 0) {
-                    container.innerHTML = `
-                        <div class="glass-card" style="grid-column: 1/-1;text-align: center;padding: 3rem;">
-                            <i class="fas fa-book-reader" style="font-size:3rem; color:var(--text-muted); margin-bottom:1rem;"></i>
-                            <h3>No Courses Available</h3>
-                            <p style="color:var(--text-muted);">Courses will appear here once the administrator seeds the syllabus.</p>
-                        </div>
-                    `;
-                    return;
-                }
+function buildSidebar(role) {
+  const links = SIDEBARS[role] || [];
+  document.getElementById('sidebar-nav').innerHTML = links.map(l => `
+    <a href="${l.href}" class="sidebar-link ${l.active ? 'active' : ''}">
+      <i class="${l.icon}"></i>
+      <span>${l.label}</span>
+    </a>
+  `).join('');
+}
 
-                container.innerHTML = allCourses.map(course => {
-                    const isEnrolled = (currentUser.enrolledCourses || []).some(ec => (ec._id || ec) === course._id);
-                    const progress = currentUser.courseProgress?.find(p => p.courseId === course._id || p.courseId?._id === course._id);
-                    const completedCount = progress?.completedUnits?.length || 0;
-                    const totalLessons = course.lessons?.length || (course.units || []).reduce((a, u) => a + (u.topics?.length || 0), 0) || 1;
-                    const percent = isEnrolled ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
+// ── Modal helpers ──────────────────────────────────────────────────────────
+function showModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function showCreateExamModal()  { showModal('create-exam-modal'); }
+function showCreateUserModal()  { showModal('create-user-modal'); }
 
-                    return `
-                        <div class="glass-card exam-card hover-scale" style="border-top:4px solid ${isEnrolled ? 'var(--success)' : 'transparent'};">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="color:var(--accent-primary); font-weight:800; font-size:0.8rem;">${course.code}</span>
-                                ${isEnrolled ? '<span style="color:var(--success); font-size:0.7rem; font-weight:700;">ENROLLED</span>' : '<span style="color:var(--text-muted); font-size:0.7rem;">NEW</span>'}
-                            </div>
-                            <h3 style="margin-top:0.5rem;">${course.title}</h3>
-                            <p style="color:var(--text-muted); font-size:0.9rem; margin:0.75rem 0;">${course.description || ''}</p>
-                            ${isEnrolled ? `
-                            <div style="margin-top:1rem;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.9rem;">
-                                    <span>Progress</span>
-                                    <span style="color:var(--success); font-weight:bold;">${percent}%</span>
-                                </div>
-                                <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
-                                    <div style="height:100%; width:${percent}%; background:linear-gradient(90deg, var(--success), var(--accent-primary)); border-radius:4px;"></div>
-                                </div>
-                            </div>` : ''}
-                            <button onclick="window.location.href='learning.html?courseId=${course._id}'" class="btn ${isEnrolled ? 'btn-primary' : 'btn-secondary'}" style="margin-top:1.5rem; width:100%;">
-                                ${isEnrolled ? 'Continue Learning' : 'Start Learning'}
-                            </button>
-                        </div>
-                    `;
-                }).join('');
-            } catch (error) {
-                console.error('Failed to load student courses:', error);
-            }
-        }
+// ── Ollama health indicator ───────────────────────────────────────────────
+async function checkAIStatus() {
+  const el = document.getElementById('ai-status-indicator');
+  try {
+    const resp = await fetch('http://localhost:8000/api/health');
+    const data = await resp.json();
+    if (data.ollamaAvailable) {
+      el.innerHTML = `<span class="status-dot status-active"></span> AI Online (${(data.availableModels || []).length} models)`;
+      el.style.color = 'var(--success)';
+    } else {
+      el.innerHTML = `<span class="status-dot status-failed"></span> Ollama Offline`;
+      el.style.color = 'var(--danger)';
+    }
+  } catch {
+    el.innerHTML = `<span class="status-dot status-failed"></span> Evaluator Offline`;
+    el.style.color = 'var(--text-tertiary)';
+  }
+}
 
-        async function loadStudentResults() {
-            try {
-                const results = await api.request('GET', '/results/my-results');
-                const container = document.getElementById('student-results');
+// ── MAIN LOAD ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!localStorage.getItem('token')) { window.location.href = 'login.html'; return; }
 
-                if (results.length === 0) {
-                    container.innerHTML = '<div style="grid-column: 1/-1;text-align: center;padding: 2rem;color: var(--text-secondary);">No results yet</div>';
-                    return;
-                }
+  checkAIStatus();
 
-                container.innerHTML = results.map(result => `
-                    <div class="glass-card exam-card hover-scale">
-                        <h3>${result.examId?.title || 'Exam'}</h3>
-                        <div class="meta" style="background: ${result.percentage >= 50 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; padding:0.75rem; border-radius:12px;">
-                            <span style="color: ${result.percentage >= 50 ? 'var(--success)' : 'var(--danger)'};">Score: ${result.totalScore}/${result.totalMarks}</span>
-                            <span style="color: ${result.percentage >= 50 ? 'var(--success)' : 'var(--danger)'};">${Number(result.percentage || 0).toFixed(1)}%</span>
-                        </div>
-                        <a class="btn btn-secondary" style="margin-top:1rem;" href="result-report.html?examId=${result.examId?._id || result.examId}">View Report</a>
-                    </div>
-                `).join('');
-            } catch (error) {
-                console.error('Failed to load results:', error);
-            }
-        }
+  try {
+    const response = await api.getCurrentUser();
+    currentUser = response.user;
+    document.getElementById('user-name').textContent = currentUser.name;
 
-        async function loadTeacherExams() {
-            try {
-                const response = await api.getExams();
-                const container = document.getElementById('teacher-exams-list');
+    buildSidebar(currentUser.role);
 
-                if (!response.exams || response.exams.length === 0) {
-                    container.innerHTML = '<div style="grid-column: 1/-1;text-align: center;padding: 2rem;color: var(--text-secondary);">No exams created yet</div>';
-                    return;
-                }
+    if (currentUser.role === 'student') {
+      document.getElementById('student-dashboard').classList.remove('hidden');
+      document.getElementById('student-name').textContent = currentUser.name.split(' ')[0];
+      loadStudentData();
+    } else if (currentUser.role === 'teacher') {
+      document.getElementById('teacher-dashboard').classList.remove('hidden');
+      loadTeacherData();
+    } else {
+      document.getElementById('admin-dashboard').classList.remove('hidden');
+      loadAdminData();
+    }
+  } catch (err) {
+    console.error('Auth error:', err);
+    Toast.error('Session expired. Please log in again.');
+    setTimeout(logout, 1500);
+  }
+});
 
-                container.innerHTML = response.exams.map(exam => `
-                    <div class="exam-card">
-                        <h3>${exam.title}</h3>
-                        <p class="subtitle">${exam.description}</p>
-                        <div class="meta">
-                            <span class="status-badge ${exam.status === 'active' ? 'bg-active' : 'bg-draft'}">${exam.status}</span>
-                            <span>⏱️ ${exam.duration} min</span>
-                        </div>
-                        <div class="exam-actions">
-                            <button onclick="manageQuestions('${exam._id}')" class="btn btn-secondary">Manage</button>
-                            <button onclick="viewExamResults('${exam._id}')" class="btn btn-secondary">Analytics</button>
-                            <button onclick="publishExam('${exam._id}')" class="btn btn-primary" ${exam.status === 'active' ? 'disabled' : ''}>Publish</button>
-                            <button onclick="deleteExam('${exam._id}')" class="btn btn-danger" style="padding: 0.5rem 1rem;font-size: 0.85rem;">Delete</button>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (error) {
-                console.error('Failed to load exams:', error);
-            }
-        }
+// ── STUDENT ──────────────────────────────────────────────────────────────
+async function loadStudentData() {
+  await Promise.all([
+    loadStudentStats(),
+    loadStudentExams(),
+    loadStudentResults(),
+    loadStudentCourses(),
+  ]);
+}
 
-        async function deleteExam(examId) {
-            if (!confirm('Are you sure you want to delete this exam and all its questions?')) return;
-            try {
-                await api.deleteExam(examId);
-                loadTeacherExams();
-                loadTeacherStats();
-            } catch (error) {
-                alert('Error deleting exam: ' + error.message);
-            }
-        }
+async function loadStudentStats() {
+  try {
+    const stats = await api.getStudentStats();
+    window.studentStats = stats;
+    document.getElementById('stats-total-exams').textContent   = stats.totalExams || 0;
+    document.getElementById('stats-avg-score').textContent     = (stats.averagePercentage || 0).toFixed(1) + '%';
+    const courses = await api.getCourses();
+    document.getElementById('stats-total-courses').textContent = courses.courses?.length || 0;
+    document.getElementById('stats-completed-lessons').textContent =
+      currentUser.courseProgress?.reduce((a, c) => a + (c.completedUnits?.length || 0), 0) || 0;
+  } catch {}
+}
 
-        function viewExamResults(examId) {
-            window.location.href = `exam-analytics.html?examId=${examId}`;
-        }
+async function loadStudentExams() {
+  const container = document.getElementById('student-exams-list');
+  try {
+    const response = await api.getExams();
+    const exams = response.exams || [];
+    document.getElementById('exam-count').textContent = `${exams.length} exam${exams.length !== 1 ? 's' : ''}`;
+    if (exams.length === 0) {
+      container.innerHTML = `
+        <div class="glass-card" style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-secondary)">
+          <i class="fas fa-clipboard" style="font-size:2.5rem;opacity:0.3;margin-bottom:1rem"></i>
+          <p>No exams available yet</p>
+        </div>`;
+      return;
+    }
+    container.innerHTML = exams.map(exam => {
+      const isActive = exam.status === 'active';
+      const subjectClass = (exam.subject || 'general').toLowerCase().replace(/\s+/g, '');
+      return `
+        <div class="glass-card exam-card hover-scale">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem">
+            <span class="subject-chip ${subjectClass}">${exam.subject || 'General'}</span>
+            <span style="font-size:0.75rem; color:var(--text-tertiary)">
+              <span class="status-dot ${isActive ? 'status-active' : 'status-draft'}"></span>
+              ${exam.status}
+            </span>
+          </div>
+          <h3 class="exam-card-title">${exam.title}</h3>
+          <p style="color:var(--text-secondary);font-size:0.875rem;margin:0.75rem 0;line-height:1.5">${exam.description || ''}</p>
+          <div class="exam-card-meta" style="margin:1rem 0">
+            <span><i class="fas fa-clock"></i> ${exam.duration}m</span>
+            <span><i class="fas fa-star"></i> ${exam.totalMarks} marks</span>
+          </div>
+          <button onclick="window.location.href='exam.html?id=${exam._id}'"
+                  class="btn ${isActive ? 'btn-primary' : 'btn-secondary'} btn-full"
+                  ${!isActive ? 'disabled' : ''}>
+            ${isActive ? '<i class="fas fa-play"></i> Start Exam' : 'Not Active'}
+          </button>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    container.innerHTML = `<div class="glass-card" style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--danger)">
+      <i class="fas fa-exclamation-triangle"></i> ${err.message}
+    </div>`;
+  }
+}
 
-        async function loadTeacherStats() {
-            try {
-                const stats = await api.getGlobalStats();
-                document.getElementById('teacher-total-exams').textContent = stats.overview.totalExams;
-                document.getElementById('teacher-total-students').textContent = stats.overview.totalStudents;
-                document.getElementById('teacher-total-results').textContent = stats.overview.totalResults;
-                document.getElementById('teacher-average-score').textContent = stats.overview.globalAverageScore + '%';
-            } catch (error) {
-                console.error('Failed to load teacher stats:', error);
-            }
-        }
+async function loadStudentResults() {
+  const container = document.getElementById('student-results');
+  try {
+    const results = await api.getStudentResults();
+    if (!results.length) {
+      container.innerHTML = `
+        <div class="glass-card" style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-secondary)">
+          <i class="fas fa-chart-line" style="font-size:2rem;opacity:0.3;margin-bottom:0.75rem"></i>
+          <p>No results yet. Take an exam to see your scores here.</p>
+        </div>`;
+      return;
+    }
+    container.innerHTML = results.map(r => {
+      const pct = Number(r.percentage || 0).toFixed(1);
+      const color = r.percentage >= 70 ? 'var(--success)' : r.percentage >= 40 ? 'var(--warning)' : 'var(--danger)';
+      return `
+        <div class="glass-card exam-card">
+          <h3 style="font-size:0.95rem">${r.examId?.title || 'Exam'}</h3>
+          <div style="margin:1rem 0">
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.4rem">
+              <span>${r.totalScore}/${r.totalMarks}</span>
+              <span style="color:${color};font-weight:700">${pct}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill ${r.percentage >= 70 ? 'success' : r.percentage >= 40 ? 'warning' : 'danger'}"
+                   style="width:${pct}%"></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="badge ${r.status === 'evaluated' ? 'badge-green' : 'badge-yellow'}">${r.status}</span>
+            <a href="result-report.html?examId=${r.examId?._id || r.examId}" class="btn btn-ghost btn-sm">
+              View Report <i class="fas fa-arrow-right"></i>
+            </a>
+          </div>
+        </div>`;
+    }).join('');
+  } catch {}
+}
 
-        async function loadStudentProgress() {
-            try {
-                const response = await api.request('GET', '/results/students/progress');
-                const progressData = response.progress || [];
-                const container = document.getElementById('teacher-student-progress');
+async function loadStudentCourses() {
+  const container = document.getElementById('student-courses-list');
+  try {
+    const res = await api.getCourses();
+    const courses = res.courses || [];
+    if (!courses.length) {
+      container.innerHTML = `
+        <div class="glass-card" style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-secondary)">
+          No courses available. Contact your administrator.
+        </div>`;
+      return;
+    }
+    container.innerHTML = courses.slice(0, 6).map(course => {
+      const enrolled = (currentUser.enrolledCourses || []).some(e => (e._id || e) === course._id);
+      const progress = currentUser.courseProgress?.find(p => (p.courseId?._id || p.courseId) === course._id);
+      const completed = progress?.completedUnits?.length || 0;
+      const total     = (course.units || []).reduce((a, u) => a + (u.topics?.length || 1), 0) || 1;
+      const pct       = enrolled ? Math.min(100, Math.round(completed / total * 100)) : 0;
+      return `
+        <div class="glass-card exam-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+            <span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--accent-primary);font-weight:700">${course.code}</span>
+            ${enrolled ? '<span class="badge badge-green">Enrolled</span>' : '<span class="badge badge-gray">New</span>'}
+          </div>
+          <h3 style="font-size:0.95rem">${course.title}</h3>
+          ${enrolled ? `
+            <div style="margin-top:1rem">
+              <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.4rem">
+                <span>Progress</span><span style="font-weight:700;color:var(--success)">${pct}%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill success" style="width:${pct}%"></div></div>
+            </div>` : ''}
+          <button onclick="window.location.href='learning.html?courseId=${course._id}'"
+                  class="btn ${enrolled ? 'btn-primary' : 'btn-secondary'} btn-full" style="margin-top:1.25rem">
+            ${enrolled ? 'Continue' : 'Start Learning'}
+          </button>
+        </div>`;
+    }).join('');
+  } catch {}
+}
 
-                if (progressData.length === 0) {
-                    container.innerHTML = '<div style="grid-column: 1/-1;text-align: center;padding: 2rem;color: var(--text-secondary);">No student data available.</div>';
-                    return;
-                }
+// ── TEACHER ────────────────────────────────────────────────────────────────
+async function loadTeacherData() {
+  await Promise.all([
+    loadTeacherStats(),
+    loadTeacherExams(),
+    loadStudentProgress(),
+  ]);
+}
 
-                container.innerHTML = progressData.map(student => `
-                    <div class="glass-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <h3 style="margin-bottom:0;">${student.name}</h3>
-                            <span class="status-badge" style="background:var(--bg-tertiary);">${student.examsTaken} Exams</span>
-                        </div>
-                        <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.2rem;">${student.email}</p>
-                        
-                        <div style="margin-top:1.5rem;">
-                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.9rem;">
-                                <span>Average Exam Score</span>
-                                <span style="color:${student.averageScore >= 60 ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${student.averageScore}%</span>
-                            </div>
-                            <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
-                                <div style="height:100%; width:${student.averageScore}%; background:${student.averageScore >= 60 ? 'var(--success)' : 'var(--danger)'}; border-radius:4px;"></div>
-                            </div>
-                        </div>
-                        <div style="margin-top:1.5rem; font-size:0.85rem; color:var(--text-tertiary);">
-                            Last Active: ${student.lastActive}
-                        </div>
-                    </div>
-                `).join('');
-            } catch (error) {
-                console.error('Failed to load student progress:', error);
-            }
-        }
+async function loadTeacherStats() {
+  try {
+    const stats = await api.getGlobalStats();
+    document.getElementById('teacher-total-exams').textContent    = stats.overview?.totalExams || 0;
+    document.getElementById('teacher-total-students').textContent = stats.overview?.totalStudents || 0;
+    document.getElementById('teacher-total-results').textContent  = stats.overview?.totalResults || 0;
+    document.getElementById('teacher-average-score').textContent  = (stats.overview?.globalAverageScore || 0).toFixed(1) + '%';
+  } catch {}
+}
 
-        async function loadTeacherAssignedCourses() {
-            try {
-                const response = await api.request('GET', '/courses');
-                const myCourses = (response.courses || []).filter(c => c.teacherId === currentUser._id || c.teacherId?._id === currentUser._id);
-                const container = document.getElementById('teacher-assigned-courses');
+async function loadTeacherExams() {
+  const container = document.getElementById('teacher-exams-list');
+  const select    = document.getElementById('eval-exam-select');
+  try {
+    const response = await api.getExams();
+    teacherExams = response.exams || [];
 
-                if (myCourses.length === 0) {
-                    container.innerHTML = '<div style="grid-column: 1/-1;text-align: center;padding: 2rem;color: var(--text-secondary);">You are not assigned to any specific course. Contact admin to assign courses.</div>';
-                    return;
-                }
+    // Populate eval dropdown
+    select.innerHTML = '<option value="">Select exam…</option>' +
+      teacherExams.map(e => `<option value="${e._id}">${e.title}</option>`).join('');
 
-                container.innerHTML = myCourses.map(course => `
-                    <div class="glass-card exam-card">
-                        <span style="color:var(--accent-primary); font-weight:800; font-size:0.8rem;">${course.code}</span>
-                        <h3 style="margin-top:0.5rem;">${course.title}</h3>
-                        <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.75rem;">${course.units?.length || 0} Units • ${course.credits} Credits</p>
-                        <button onclick="window.location.href='learning.html?courseId=${course._id}'" class="btn btn-secondary" style="margin-top:1.5rem; width:100%;">View Course Materials</button>
-                    </div>
-                `).join('');
-            } catch (error) {
-                console.error('Failed to load assigned courses:', error);
-            }
-        }
+    if (!teacherExams.length) {
+      container.innerHTML = `
+        <div class="glass-card" style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-secondary)">
+          <i class="fas fa-file-alt" style="font-size:2.5rem;opacity:0.3;margin-bottom:1rem"></i>
+          <p>No exams created yet. Click "Create Exam" to get started.</p>
+        </div>`;
+      return;
+    }
 
-        async function loadAdminDashboard() {
-            try {
-                const dashboard = await api.request('GET', '/admin/dashboard');
-                document.getElementById('stat-users').textContent = dashboard.totalUsers;
-                document.getElementById('stat-exams').textContent = dashboard.totalExams;
-                document.getElementById('stat-results').textContent = dashboard.totalResults;
-                document.getElementById('stat-courses').textContent = dashboard.totalCourses || 0;
-                loadAdminUsers();
-            } catch (error) {
-                console.error('Failed to load admin dashboard:', error);
-            }
-        }
+    container.innerHTML = teacherExams.map(exam => {
+      const isActive = exam.status === 'active';
+      return `
+        <div class="glass-card exam-card">
+          <div class="exam-card-header">
+            <div>
+              <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem">
+                <span class="subject-chip ${(exam.subject || 'general').toLowerCase()}">${exam.subject || 'General'}</span>
+                <span style="font-size:0.75rem; color:var(--text-tertiary)">
+                  <span class="status-dot ${isActive ? 'status-active' : 'status-draft'}"></span> ${exam.status}
+                </span>
+              </div>
+              <h3 class="exam-card-title">${exam.title}</h3>
+            </div>
+          </div>
+          <p style="color:var(--text-secondary);font-size:0.85rem;margin:0.5rem 0 1rem">${exam.description || ''}</p>
+          <div class="exam-card-meta">
+            <span><i class="fas fa-clock"></i> ${exam.duration}m</span>
+            <span><i class="fas fa-star"></i> ${exam.totalMarks} marks</span>
+          </div>
+          <div style="display:flex;gap:0.5rem;margin-top:1.25rem;flex-wrap:wrap">
+            <button onclick="window.location.href='manage-exam.html?id=${exam._id}'" class="btn btn-secondary btn-sm">
+              <i class="fas fa-edit"></i> Manage
+            </button>
+            <button onclick="window.location.href='exam-analytics.html?examId=${exam._id}'" class="btn btn-secondary btn-sm">
+              <i class="fas fa-chart-bar"></i> Analytics
+            </button>
+            <button onclick="publishExam('${exam._id}')" class="btn btn-primary btn-sm" ${isActive ? 'disabled' : ''}>
+              <i class="fas fa-paper-plane"></i> ${isActive ? 'Published' : 'Publish'}
+            </button>
+            <button onclick="deleteExam('${exam._id}')" class="btn btn-danger btn-sm">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    container.innerHTML = `<div class="glass-card" style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--danger)">${err.message}</div>`;
+  }
+}
 
-        async function loadAdminUsers() {
-            try {
-                const response = await api.request('GET', '/admin/users');
-                const tbody = document.getElementById('admin-users-tbody');
+async function loadStudentProgress() {
+  const container = document.getElementById('teacher-student-progress');
+  try {
+    const response = await api.request('GET', '/results/students/progress');
+    const students = response.progress || [];
+    if (!students.length) {
+      container.innerHTML = `
+        <div class="glass-card" style="text-align:center;padding:2rem;color:var(--text-secondary)">
+          No student submissions yet.
+        </div>`;
+      return;
+    }
+    container.innerHTML = `
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Email</th>
+              <th>Exams Taken</th>
+              <th>Avg Score</th>
+              <th>Last Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${students.map(s => `
+              <tr>
+                <td><strong>${s.name}</strong></td>
+                <td class="text-muted text-sm">${s.email}</td>
+                <td><span class="badge badge-blue">${s.examsTaken}</span></td>
+                <td>
+                  <span class="${s.averageScore >= 70 ? 'score-high' : s.averageScore >= 40 ? 'score-medium' : 'score-low'}"
+                        style="font-weight:700">${s.averageScore}%</span>
+                </td>
+                <td class="text-muted text-sm">${s.lastActive}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch {}
+}
 
-                tbody.innerHTML = response.users.map(user => `
-                    <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="padding: 1rem;">${user.name}</td>
-                        <td style="padding: 1rem;">${user.email}</td>
-                        <td style="padding: 1rem;"><span class="status-badge bg-active">${user.role}</span></td>
-                        <td style="padding: 1rem;">
-                            <button onclick="deleteUser('${user._id}')" class="btn btn-danger" style="padding: 0.5rem 1rem;font-size: 0.85rem;">Delete</button>
-                        </td>
-                    </tr>
-                `).join('');
-            } catch (error) {
-                console.error('Failed to load users:', error);
-            }
-        }
-
-        async function deleteUser(userId) {
-            if (!confirm('Delete this user permanently?')) return;
-            try {
-                await api.request('DELETE', `/admin/users/${userId}`);
-                loadAdminUsers();
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
-        }
-
-        function showCreateExamModal() {
-            populateSubjectSelect(document.getElementById('exam-subject'));
-            document.getElementById('create-exam-modal').classList.remove('hidden');
-        }
-
-        function showCreateUserModal() {
-            document.getElementById('create-user-modal').classList.remove('hidden');
-        }
-
-        function hideModal(modalId) {
-            document.getElementById(modalId).classList.add('hidden');
-        }
-
-        async function handleCreateExam(event) {
-            event.preventDefault();
-            try {
-                const examData = {
-                    title: document.getElementById('exam-title').value,
-                    description: document.getElementById('exam-description').value,
-                    subject: document.getElementById('exam-subject').value,
-                    duration: parseInt(document.getElementById('exam-duration').value),
-                    totalMarks: parseInt(document.getElementById('exam-total-marks').value)
-                };
-                await api.createExam(examData);
-                hideModal('create-exam-modal');
-                loadTeacherExams();
-                loadTeacherStats();
-                event.target.reset();
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
-        }
-
-        async function handleCreateUser(event) {
-            event.preventDefault();
-            try {
-                const userData = {
-                    name: document.getElementById('new-user-name').value,
-                    email: document.getElementById('new-user-email').value,
-                    password: document.getElementById('new-user-password').value,
-                    role: document.getElementById('new-user-role').value
-                };
-                await api.request('POST', '/admin/users', userData);
-                hideModal('create-user-modal');
-                loadAdminUsers();
-                event.target.reset();
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
-        }
-
-        async function publishExam(examId) {
-            if (!confirm('Publish this exam?')) return;
-            try {
-                await api.publishExam(examId);
-                loadTeacherExams();
-                loadTeacherStats();
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
-        }
-
-        async function deleteQuestion(examId, questionId) {
-            if (!confirm('Are you sure you want to delete this question?')) return;
-            try {
-                await api.request('DELETE', `/exams/${examId}/questions/${questionId}`);
-                alert('Question deleted successfully!');
-                editExam(examId); // Refresh list
-            } catch (error) {
-                alert('Failed to delete question: ' + error.message);
-            }
-        }
-
-        function logout() {
-            api.logout();
-            window.location.href = 'login.html';
-        }
-
-        // Task Management Logic
-        let tasks = JSON.parse(localStorage.getItem('user_tasks') || '[]');
-        if (tasks.length === 0) {
-            tasks = [
-                { id: 1, text: "Implement Exam/Question Deletion", completed: true },
-                { id: 2, text: "Upgrade Coding Portal (Premium UI + Run Code)", completed: true },
-                { id: 3, text: "Populate Syllabus R2024 Content", completed: true },
-                { id: 4, text: "Build Admin Dashboard & User Management", completed: true },
-                { id: 5, text: "Implement Statistics & Analytics", completed: true }
-            ];
-            localStorage.setItem('user_tasks', JSON.stringify(tasks));
-        }
-
-        function handleAddTask(event) {
-            event.preventDefault();
-            const input = document.getElementById('task-input');
-            const text = input.value.trim();
-            if (!text) return;
-
-            const newTask = {
-                id: Date.now(),
-                text,
-                completed: false,
-                createdAt: new Date().toISOString()
-            };
-
-            tasks.push(newTask);
-            saveTasks();
-            input.value = '';
-            renderTasks();
-        }
-
-        function toggleTask(id) {
-            tasks = tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
-            saveTasks();
-            renderTasks();
-        }
-
-        function deleteTask(id) {
-            tasks = tasks.filter(t => t.id !== id);
-            saveTasks();
-            renderTasks();
-        }
-
-        function saveTasks() {
-            localStorage.setItem('user_tasks', JSON.stringify(tasks));
-        }
-
-        function renderTasks() {
-            const container = document.getElementById('tasks-container');
-            if (!container) return;
-
-            if (tasks.length === 0) {
-                container.innerHTML = '<p style="color:var(--text-muted); text-align:center;">No tasks yet. Add one above!</p>';
-                return;
-            }
-
-            container.innerHTML = tasks.sort((a,b) => b.id - a.id).map(task => `
-                <div style="display:flex; align-items:center; gap:1rem; padding:1rem; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid ${task.completed ? 'rgba(16,185,129,0.2)' : 'var(--border)'}; transition: all 0.3s;">
-                    <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})" style="width:20px; height:20px; cursor:pointer; accent-color:var(--primary);">
-                    <span style="flex:1; text-decoration: ${task.completed ? 'line-through' : 'none'}; color: ${task.completed ? 'var(--text-muted)' : 'var(--text-main)'}; font-size:1rem;">
-                        ${task.text}
+// ── AI Evaluation Status ──────────────────────────────────────────────────
+async function loadEvalStatus(examId) {
+  if (!examId) return;
+  const container = document.getElementById('eval-status-content');
+  container.innerHTML = `<div class="glass-card" style="text-align:center;padding:2rem;color:var(--text-secondary)">
+    <div class="spinner" style="margin:0 auto 1rem"></div> Loading evaluation data…</div>`;
+  try {
+    const data = await api.getEvaluationStatus(examId);
+    const results = data.results || [];
+    if (!results.length) {
+      container.innerHTML = `<div class="glass-card" style="text-align:center;padding:2rem;color:var(--text-secondary)">No submissions yet for this exam.</div>`;
+      return;
+    }
+    container.innerHTML = `
+      <div class="table-wrapper glass-card" style="padding:0">
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Status</th>
+              <th>Score</th>
+              <th>AI Confidence</th>
+              <th>Models Used</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${results.map(r => {
+              const confLevel = confidenceBadgeClass(r.avgConfidence || 0);
+              const statusColors = { evaluated:'badge-green', pending:'badge-yellow', evaluation_failed:'badge-red' };
+              return `
+                <tr>
+                  <td>
+                    <div style="font-weight:600">${r.studentName || 'Unknown'}</div>
+                    <div class="text-xs text-muted">${r.studentEmail || ''}</div>
+                  </td>
+                  <td><span class="badge ${statusColors[r.status] || 'badge-gray'}">${r.status}</span></td>
+                  <td>
+                    <span class="${scoreColor(r.percentage)}" style="font-weight:700">
+                      ${r.totalScore}/${r.totalMarks} (${(r.percentage || 0).toFixed(1)}%)
                     </span>
-                    <button onclick="deleteTask(${task.id})" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem; hover:color:var(--danger);">×</button>
-                </div>
-            `).join('');
-        }
+                  </td>
+                  <td>
+                    <span class="ai-badge ${confLevel}">
+                      <i class="fas fa-robot"></i> ${((r.avgConfidence || 0) * 100).toFixed(0)}%
+                    </span>
+                  </td>
+                  <td>
+                    ${(r.modelsUsed || []).map(m => `<span class="badge badge-purple" style="font-size:0.6rem;margin:1px">${m}</span>`).join('') || '<span class="text-muted text-xs">—</span>'}
+                  </td>
+                  <td>
+                    <div style="display:flex;gap:0.4rem">
+                      <a href="result-report.html?examId=${examId}&studentId=${r.studentId}" class="btn btn-ghost btn-sm" title="View Report">
+                        <i class="fas fa-eye"></i>
+                      </a>
+                      <button onclick="triggerReEval('${examId}','${r.studentId}')" class="btn btn-ghost btn-sm" title="Re-evaluate with AI">
+                        <i class="fas fa-sync-alt"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-tertiary)">
+        Total: ${data.totalStudents} submissions
+      </div>`;
+  } catch (err) {
+    container.innerHTML = `<div class="glass-card" style="text-align:center;padding:2rem;color:var(--danger)">
+      <i class="fas fa-exclamation-triangle"></i> ${err.message}</div>`;
+  }
+}
 
-        // Initial render
-        document.addEventListener('DOMContentLoaded', () => {
-            renderTasks();
-        });
-    </script>
+function refreshEvalStatus() {
+  const val = document.getElementById('eval-exam-select').value;
+  if (val) loadEvalStatus(val);
+}
+
+async function triggerReEval(examId, studentId) {
+  try {
+    Toast.info('Re-evaluation started…');
+    await api.reEvaluate(examId, studentId);
+    Toast.success('Re-evaluation complete! Refreshing…');
+    setTimeout(() => loadEvalStatus(examId), 1000);
+  } catch (err) {
+    Toast.error('Re-evaluation failed: ' + err.message);
+  }
+}
+
+// ── ADMIN ────────────────────────────────────────────────────────────────
+async function loadAdminData() {
+  try {
+    const dashboard = await api.request('GET', '/admin/dashboard');
+    document.getElementById('stat-users').textContent   = dashboard.totalUsers   || 0;
+    document.getElementById('stat-exams').textContent   = dashboard.totalExams   || 0;
+    document.getElementById('stat-results').textContent = dashboard.totalResults || 0;
+    document.getElementById('stat-courses').textContent = dashboard.totalCourses || 0;
+    loadAdminUsers();
+  } catch {}
+}
+
+async function loadAdminUsers() {
+  const tbody = document.getElementById('admin-users-tbody');
+  try {
+    const res = await api.request('GET', '/admin/users');
+    const roleColor = { student:'badge-blue', teacher:'badge-yellow', admin:'badge-red' };
+    tbody.innerHTML = res.users.map(u => `
+      <tr>
+        <td><strong>${u.name}</strong></td>
+        <td class="text-muted text-sm">${u.email}</td>
+        <td><span class="badge ${roleColor[u.role] || 'badge-gray'}">${u.role}</span></td>
+        <td>
+          <button onclick="deleteUser('${u._id}')" class="btn btn-danger btn-sm">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
+      </tr>`).join('');
+  } catch {}
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────
+async function publishExam(id) {
+  if (!confirm('Publish this exam? Students will be able to start it immediately.')) return;
+  try {
+    await api.publishExam(id);
+    Toast.success('Exam published!');
+    loadTeacherExams();
+  } catch (e) { Toast.error(e.message); }
+}
+
+async function deleteExam(id) {
+  if (!confirm('Delete this exam and all its questions? This cannot be undone.')) return;
+  try {
+    await api.deleteExam(id);
+    Toast.success('Exam deleted.');
+    loadTeacherExams();
+    loadTeacherStats();
+  } catch (e) { Toast.error(e.message); }
+}
+
+async function deleteUser(id) {
+  if (!confirm('Permanently delete this user?')) return;
+  try {
+    await api.request('DELETE', `/admin/users/${id}`);
+    Toast.success('User deleted.');
+    loadAdminUsers();
+  } catch (e) { Toast.error(e.message); }
+}
+
+async function handleCreateExam(event) {
+  event.preventDefault();
+  const btn = event.target.querySelector('button[type="submit"]');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating…';
+  try {
+    await api.createExam({
+      title:       document.getElementById('exam-title').value,
+      description: document.getElementById('exam-description').value,
+      subject:     document.getElementById('exam-subject').value,
+      duration:    parseInt(document.getElementById('exam-duration').value),
+      totalMarks:  parseInt(document.getElementById('exam-total-marks').value),
+    });
+    closeModal('create-exam-modal');
+    event.target.reset();
+    Toast.success('Exam created!');
+    loadTeacherExams();
+    loadTeacherStats();
+  } catch (e) { Toast.error(e.message); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check"></i> Create Exam';
+  }
+}
+
+async function handleCreateUser(event) {
+  event.preventDefault();
+  const btn = event.target.querySelector('button[type="submit"]');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating…';
+  try {
+    await api.request('POST', '/admin/users', {
+      name:     document.getElementById('new-user-name').value,
+      email:    document.getElementById('new-user-email').value,
+      password: document.getElementById('new-user-password').value,
+      role:     document.getElementById('new-user-role').value,
+    });
+    closeModal('create-user-modal');
+    event.target.reset();
+    Toast.success('User created!');
+    loadAdminUsers();
+  } catch (e) { Toast.error(e.message); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check"></i> Create User';
+  }
+}
+
+function manageQuestions(examId) { window.location.href = `manage-exam.html?id=${examId}`; }
+</script>
 </body>
 </html>

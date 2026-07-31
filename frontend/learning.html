@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="src/css/style.css">
     <link rel="stylesheet" href="src/css/enhanced-style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
     <div class="bg-mesh"></div>
@@ -16,8 +18,8 @@
             <a href="dashboard.html" class="logo"><span>Global</span> Exams</a>
             <ul class="navbar-menu">
                 <li>
-                    <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
-                        <i class="fas fa-sun"></i>
+                    <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode" aria-label="Toggle Light or Dark Mode">
+                        <i class="fas fa-sun" aria-hidden="true"></i>
                     </button>
                 </li>
                 <li><span id="user-display" style="color:var(--text-secondary); font-size:0.9rem;">Loading...</span></li>
@@ -29,7 +31,7 @@
     <main class="container" style="padding-top:3rem; padding-bottom:5rem;">
         <header class="glass-card" style="margin-bottom:2rem; overflow:hidden; position:relative;">
             <div style="max-width:760px;">
-                <p style="color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:0.08em;">R2024 CSE Syllabus</p>
+
                 <h1 class="gradient-text" style="font-size:clamp(2.2rem, 6vw, 4.5rem); line-height:1; margin:0.4rem 0 1rem;">Learn by doing.</h1>
                 <p style="color:var(--text-muted); font-size:1.1rem;">Browse every seeded course from the syllabus, check off lessons, practice topic questions, and run code without leaving the learning flow.</p>
             </div>
@@ -152,6 +154,27 @@
         let currentUser = null;
         let currentStepIndex = 0;
         let journeySteps = [];
+        let practiceTasksCompleted = new Set();
+        let currentStepTotalTasks = 0;
+        let currentStepStartTime = Date.now();
+        let currentDifficulty = 1;
+
+        async function logTimeSpentForCurrentStep() {
+            if (currentStepIndex < 0 || currentStepIndex >= journeySteps.length) return;
+            const step = journeySteps[currentStepIndex];
+            const timeSpentSeconds = Math.floor((Date.now() - currentStepStartTime) / 1000);
+            if (timeSpentSeconds >= 5) {
+                let key = '';
+                if (step.type === 'lesson') key = lessonKey(step.unit.number, step.lesson.topic);
+                else if (step.type === 'practice') key = `Practice_${lessonKey(step.unit.number, step.lesson.topic)}`;
+                else if (step.type === 'homework') key = `Homework_Unit_${step.unit.number}`;
+                
+                try {
+                    await api.request('POST', `/courses/${currentCourse._id}/time`, { unitKey: key, timeSpentSeconds });
+                } catch(err) { console.warn('Failed to log time', err); }
+            }
+            currentStepStartTime = Date.now();
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             if (!localStorage.getItem('token')) {
@@ -386,6 +409,9 @@
             
             document.getElementById('btn-prev').disabled = currentStepIndex === 0;
             document.getElementById('btn-next').textContent = currentStepIndex === journeySteps.length - 1 ? 'Finish Course' : 'Next Step';
+            
+            practiceTasksCompleted.clear();
+            currentStepTotalTasks = 0;
 
             if (step.type === 'lesson') {
                 renderLessonStep(step.unit, step.lesson);
@@ -395,6 +421,11 @@
                 await renderHomeworkStep(step.unit);
             }
             renderJourneyMap();
+            
+            // Re-render MathJax
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
         }
 
         function renderLessonStep(unit, lesson) {
@@ -415,7 +446,7 @@
                 <h2 style="margin:0.5rem 0 1.5rem;">${escapeHtml(lesson.topic)}</h2>
                 
                 <div class="glass-card" style="background:rgba(255,255,255,0.02); margin-bottom:1.5rem;">
-                    <p style="font-size:1.1rem; line-height:1.6; color:var(--text-main);">${escapeHtml(lesson.summary)}</p>
+                    <div style="font-size:1.1rem; line-height:1.6; color:var(--text-main);">${lesson.summary}</div>
                 </div>
 
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
@@ -447,15 +478,17 @@
             inner.innerHTML = `
                 <p style="color:var(--accent); font-weight:700; margin:0;">Practice: ${lesson.topic}</p>
                 <h2 style="margin:0.5rem 0 1.5rem;">Hands-on Exercise</h2>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">Current Difficulty: ${currentDifficulty === 1 ? 'Beginner' : currentDifficulty === 2 ? 'Intermediate' : 'Expert'}</div>
                 <div id="journey-practice-questions">Loading questions...</div>
             `;
 
             try {
-                const response = await api.request('GET', `/courses/questions/${currentCourse._id}/${encodeURIComponent(lesson.topic)}?category=practice`);
+                const response = await api.request('GET', `/courses/questions/${currentCourse._id}/${encodeURIComponent(lesson.topic)}?category=practice&difficulty=${currentDifficulty}`);
                 const questions = response.questions || [];
                 if (questions.length === 0) {
                     document.getElementById('journey-practice-questions').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:2rem;">No practice problems found for this topic. Feel free to proceed to the next step.</p>';
                 } else {
+                    currentStepTotalTasks = questions.length;
                     document.getElementById('journey-practice-questions').innerHTML = questions.map((q, i) => renderJourneyQuestion(q, i)).join('');
                 }
             } catch (e) {
@@ -477,6 +510,7 @@
                 if (questions.length === 0) {
                     document.getElementById('journey-homework-questions').innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:2rem;">No homework assigned for this unit.</p>';
                 } else {
+                    currentStepTotalTasks = questions.length;
                     document.getElementById('journey-homework-questions').innerHTML = questions.map((q, i) => renderJourneyQuestion(q, i)).join('');
                 }
             } catch (e) {
@@ -485,12 +519,40 @@
         }
 
         function renderJourneyQuestion(question, index) {
+            const testCasesHtml = (question.rubric && question.rubric.testCases) ? `
+                <div style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--accent);">Sample Test Cases</h4>
+                    <table style="width: 100%; border-collapse: collapse; font-family: monospace; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                                <th style="text-align: left; padding: 0.5rem;">Input</th>
+                                <th style="text-align: left; padding: 0.5rem;">Expected Output</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${question.rubric.testCases.map(tc => `
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 0.5rem; white-space: pre-wrap;">${escapeHtml(tc.input)}</td>
+                                    <td style="padding: 0.5rem; white-space: pre-wrap;">${escapeHtml(tc.expectedOutput || tc.expected_output)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : '';
+
             const codeArea = question.type === 'programming' ? `
-                <textarea id="j-code-${question._id}" rows="10" spellcheck="false" style="font-family:'Courier New',monospace;" placeholder="Write implementation..."></textarea>
-                <button class="btn btn-secondary btn-sm" style="margin-top:0.75rem;" onclick="runCodeSnippet(document.getElementById('j-code-${question._id}').value, document.getElementById('j-out-${question._id}'), '${question._id}')">Run & Validate</button>
+                ${testCasesHtml}
+                <div style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.85rem;">Write your full code implementation below:</div>
+                <textarea id="j-code-${question._id}" rows="15" spellcheck="false" style="font-family:'Courier New',monospace; width: 100%; padding: 1rem; border-radius: 8px; background: #1e1e1e; color: #d4d4d4; border: 1px solid var(--border);" placeholder="Write implementation..."></textarea>
+                <div style="display:flex; gap: 0.5rem; margin-top:0.75rem;">
+                    <button class="btn btn-primary btn-sm" onclick="runCodeSnippet(document.getElementById('j-code-${question._id}').value, document.getElementById('j-out-${question._id}'), '${question._id}')">Run & Validate</button>
+                </div>
                 <pre id="j-out-${question._id}" class="hidden" style="margin-top:0.75rem; padding:1rem; background:#000; color:var(--success); border-radius:8px;"></pre>
             ` : `
-                <textarea id="j-ans-${question._id}" rows="4" placeholder="Your answer..."></textarea>
+                <textarea id="j-ans-${question._id}" rows="4" placeholder="Your answer..." style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white;"></textarea>
+                <button class="btn btn-secondary btn-sm" style="margin-top:0.75rem;" onclick="evaluateTextSnippet(document.getElementById('j-ans-${question._id}').value, document.getElementById('j-out-${question._id}'), '${question._id}')">Submit for Evaluation</button>
+                <div id="j-out-${question._id}" class="hidden" style="margin-top:0.75rem; padding:1rem; color:var(--success); font-weight:bold; background:rgba(0,0,0,0.5); border-radius:8px;"></div>
             `;
             
             return `
@@ -508,10 +570,21 @@
 
         async function nextStep() {
             const step = journeySteps[currentStepIndex];
+            
+            // Require all practice/homework to be completed
+            if ((step.type === 'practice' || step.type === 'homework') && currentStepTotalTasks > 0) {
+                if (practiceTasksCompleted.size < currentStepTotalTasks) {
+                    alert('Please complete all tasks and get them correct before proceeding to the next step.');
+                    return;
+                }
+            }
+
             // If it was a lesson, mark it complete
             if (step.type === 'lesson') {
                 await toggleLesson(lessonKey(step.unit.number, step.lesson.topic), true);
             }
+
+            await logTimeSpentForCurrentStep();
 
             if (currentStepIndex < journeySteps.length - 1) {
                 currentStepIndex++;
@@ -523,15 +596,18 @@
             }
         }
 
-        function prevStep() {
+        async function prevStep() {
             if (currentStepIndex > 0) {
+                await logTimeSpentForCurrentStep();
                 currentStepIndex--;
                 renderStep();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }
 
-        function goToStep(idx) {
+        async function goToStep(idx) {
+            if (currentStepIndex === idx) return;
+            await logTimeSpentForCurrentStep();
             currentStepIndex = idx;
             renderStep();
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -560,13 +636,67 @@
             await runCodeSnippet(textarea.value, output);
         }
 
+        function markTaskDone(questionId) {
+            practiceTasksCompleted.add(questionId);
+            const out = document.getElementById(`j-out-${questionId}`);
+            if (out) {
+                out.classList.remove('hidden');
+            }
+        }
+
         async function runCodeSnippet(code, output, questionId = null) {
             output.classList.remove('hidden');
-            output.textContent = 'Running...';
+            output.innerHTML = 'Running...';
             try {
                 const result = await api.request('POST', '/answers/run-code', { code, input: '', questionId });
-                output.style.color = result.score === 1 ? 'var(--success)' : 'var(--text-muted)';
-                output.textContent = result.feedback || 'Code executed successfully.';
+                
+                let html = `<div style="margin-bottom:0.5rem; color:${result.score === 1 ? 'var(--success)' : 'var(--danger)'}">${escapeHtml(result.feedback || 'Code executed')}</div>`;
+                
+                if (result.test_results && result.test_results.length > 0) {
+                    html += `<div style="display:grid; gap:0.5rem; margin-top:0.5rem;">`;
+                    result.test_results.forEach((tr, i) => {
+                        const bg = tr.passed ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
+                        const fg = tr.passed ? 'var(--success)' : 'var(--danger)';
+                        const icon = tr.passed ? '✓' : '✗';
+                        html += `
+                            <div style="background:${bg}; border-left:3px solid ${fg}; padding:0.5rem; border-radius:4px; font-size:0.85rem; display:flex; flex-direction:column; gap:0.25rem;">
+                                <strong><span style="color:${fg}">${icon} Test Case ${i+1}</span></strong>
+                                <div style="color:var(--text-secondary);"><strong>Input:</strong> <code>${escapeHtml(tr.input)}</code></div>
+                                <div style="color:var(--text-secondary);"><strong>Expected:</strong> <code>${escapeHtml(tr.expected)}</code></div>
+                                <div style="color:var(--text-secondary);"><strong>Actual:</strong> <code>${escapeHtml(tr.actual)}</code></div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                }
+
+                output.innerHTML = html;
+                if (result.score === 1 && questionId) {
+                    markTaskDone(questionId);
+                    currentDifficulty = Math.min(3, currentDifficulty + 1); // Increase difficulty
+                } else if (questionId) {
+                    currentDifficulty = Math.max(1, currentDifficulty - 1); // Decrease difficulty
+                }
+            } catch (error) {
+                output.style.color = 'var(--danger)';
+                output.textContent = error.message;
+            }
+        }
+
+        async function evaluateTextSnippet(answerText, output, questionId) {
+            output.classList.remove('hidden');
+            output.textContent = 'Evaluating with AI...';
+            output.style.color = 'var(--text-secondary)';
+            try {
+                const result = await api.request('POST', '/answers/evaluate-practice', { answerText, questionId });
+                output.style.color = result.score >= 0.5 ? 'var(--success)' : 'var(--danger)';
+                output.textContent = result.feedback || 'Answer evaluated.';
+                if (result.score >= 0.5) {
+                    markTaskDone(questionId);
+                    currentDifficulty = Math.min(3, currentDifficulty + 1); // Increase difficulty
+                } else if (questionId) {
+                    currentDifficulty = Math.max(1, currentDifficulty - 1); // Decrease difficulty
+                }
             } catch (error) {
                 output.style.color = 'var(--danger)';
                 output.textContent = error.message;

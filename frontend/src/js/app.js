@@ -13,6 +13,10 @@ async function initApp() {
     // For legacy parts referencing initApp
 }
 
+function escapeHtml(value) {
+    return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
 function toggleAuthForm() {
     const title = document.getElementById('auth-title');
     const nameInput = document.getElementById('name');
@@ -189,7 +193,10 @@ async function loadQuestions(examId) {
                 editorContainer.innerHTML = `
                     <div class="code-editor-header">
                         <span>Python Editor</span>
-                        <button class="btn btn-secondary btn-sm run-btn" onclick="runCode('${examId}', '${question._id}')">▶ Run Code</button>
+                        <div style="display:flex; gap:0.5rem;">
+                            <button class="btn btn-secondary btn-sm run-btn" onclick="runCode('${examId}', '${question._id}')">▶ Run Code</button>
+                            ${question.rubric && question.rubric.testCases ? `<button class="btn btn-secondary btn-sm" onclick="alert('Test cases:\\n' + decodeURIComponent('${encodeURIComponent(JSON.stringify(question.rubric.testCases, null, 2))}'))">View Testcases</button>` : ''}
+                        </div>
                     </div>
                     <div style="display:grid; grid-template-columns:1fr; gap:0.75rem; margin:0.75rem 0;">
                         <div style="color:var(--text-secondary); font-size:0.9rem;">
@@ -222,6 +229,10 @@ async function loadQuestions(examId) {
             
             container.appendChild(questionDiv);
         });
+
+        if (window.MathJax) {
+            MathJax.typesetPromise();
+        }
     } catch (error) {
         console.error('Failed to load questions:', error);
     }
@@ -326,6 +337,10 @@ async function showResults(examId) {
                 `).join('')}
             </div>
         `;
+
+        if (window.MathJax) {
+            MathJax.typesetPromise();
+        }
     } catch (error) {
         console.error('Failed to load results:', error);
     }
@@ -496,13 +511,29 @@ async function runCode(examId, questionId) {
         
         const result = await api.runCode(examId, questionId, textarea.value, inputArea?.value || '');
         
-        if (result.score === 1) {
-            outputContent.style.color = 'var(--success)';
+        if (result.test_results && result.test_results.length > 0) {
+            let html = `<div style="margin-bottom:0.5rem; color:${result.score === 1 ? 'var(--success)' : 'var(--danger)'}">${escapeHtml(result.feedback || 'Executed')}</div>`;
+            html += `<div style="display:grid; gap:0.5rem; margin-top:0.5rem;">`;
+            result.test_results.forEach((tr, i) => {
+                const bg = tr.passed ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
+                const fg = tr.passed ? 'var(--success)' : 'var(--danger)';
+                const icon = tr.passed ? '✓' : '✗';
+                html += `
+                    <div style="background:${bg}; border-left:3px solid ${fg}; padding:0.5rem; border-radius:4px; font-size:0.85rem; font-family:monospace; color:var(--text-secondary);">
+                        <strong style="color:${fg}">${icon} Test Case ${i+1}</strong><br/>
+                        Input: <code>${escapeHtml(tr.input)}</code><br/>
+                        Expected: <code>${escapeHtml(tr.expected)}</code><br/>
+                        Actual: <code>${escapeHtml(tr.actual)}</code>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            outputContent.innerHTML = html;
         } else {
-            outputContent.style.color = 'var(--text-primary)';
+            outputContent.textContent = result.feedback || 'Code executed successfully (no output).';
+            outputContent.style.color = result.score === 1 ? 'var(--success)' : 'var(--text-primary)';
         }
         
-        outputContent.textContent = result.feedback || 'Code executed successfully (no output).';
     } catch (error) {
         outputContent.style.color = 'var(--danger)';
         outputContent.textContent = 'Error: ' + error.message;

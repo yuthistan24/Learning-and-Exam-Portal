@@ -50,6 +50,11 @@ const userSchema = new mongoose.Schema({
       ref: 'Course'
     },
     completedUnits: [String],
+    timeSpentPerUnit: {
+      type: Map,
+      of: Number,
+      default: {}
+    },
     score: {
       type: Number,
       default: 0

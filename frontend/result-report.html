@@ -1,244 +1,419 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Evaluation Report - Global Exams</title>
-    <link rel="stylesheet" href="src/css/style.css">
-    <link rel="stylesheet" href="src/css/enhanced-style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exam Result Report — Global Exams</title>
+  <link rel="stylesheet" href="src/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body { padding-top: var(--navbar-height); }
+    .report-container { max-width: 1100px; margin: 0 auto; padding: var(--space-8); }
+
+    /* Score donut */
+    .score-donut-wrap {
+      display: flex; align-items: center; justify-content: center; flex-direction: column;
+      gap: 0.5rem;
+    }
+    .score-donut {
+      width: 130px; height: 130px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+      position: relative;
+      font-family: var(--font-display);
+    }
+    .score-donut-pct {
+      font-size: 1.75rem; font-weight: 800; line-height: 1;
+    }
+    .score-donut-sub { font-size: 0.7rem; color: var(--text-secondary); font-weight: 600; }
+
+    /* Question cards */
+    .question-result-card {
+      padding: var(--space-5);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      margin-bottom: var(--space-4);
+      transition: border-color 0.2s;
+    }
+    .question-result-card.correct  { border-left: 3px solid var(--success); }
+    .question-result-card.partial  { border-left: 3px solid var(--warning); }
+    .question-result-card.incorrect{ border-left: 3px solid var(--danger); }
+
+    .q-header {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .q-type { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); }
+    .q-score { font-size: 1rem; font-weight: 800; font-family: var(--font-display); }
+
+    .answer-block {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      line-height: 1.6;
+      margin-bottom: 0.625rem;
+    }
+    .answer-block.student { background: hsla(230, 70%, 55%, 0.08); border: 1px solid hsla(230, 70%, 55%, 0.2); }
+    .answer-block.expected{ background: hsla(145, 65%, 42%, 0.08); border: 1px solid hsla(145, 65%, 42%, 0.2); }
+    .answer-block .lbl    { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; opacity: 0.7; }
+
+    .ai-feedback-block {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-md);
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-subtle);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .ai-meta {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; align-items: center;
+    }
+
+    /* Score ring via conic gradient */
+    .score-ring {
+      background: conic-gradient(
+        var(--ring-color, var(--accent-primary)) calc(var(--ring-pct, 0) * 1%),
+        var(--bg-overlay) 0
+      );
+      border-radius: 50%;
+      padding: 12px;
+    }
+    .score-ring-inner {
+      background: var(--bg-card);
+      border-radius: 50%;
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center; flex-direction: column;
+    }
+  </style>
 </head>
 <body>
-    <div class="bg-mesh"></div>
+<div class="bg-mesh"></div>
+<div id="toast-container"></div>
 
-    <nav class="navbar">
-        <div class="navbar-container">
-            <a href="dashboard.html" class="logo"><span>Global</span> Exams</a>
-            <ul class="navbar-menu">
-                <li>
-                    <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
-                        <i class="fas fa-sun"></i>
-                    </button>
-                </li>
-                <li><span id="user-display" style="color:var(--text-secondary); font-size:0.9rem;">Loading...</span></li>
-                <li><a href="dashboard.html" class="btn btn-secondary">Dashboard</a></li>
-            </ul>
+<nav class="navbar">
+  <div class="navbar-container">
+    <a href="dashboard.html" class="navbar-brand">
+      <i class="fas fa-graduation-cap"></i> Global Exams
+    </a>
+    <div style="display:flex;align-items:center;gap:1rem">
+      <button class="theme-toggle" onclick="api.toggleTheme()"><i class="fas fa-sun"></i></button>
+      <a href="dashboard.html" class="btn btn-ghost btn-sm">
+        <i class="fas fa-arrow-left"></i> Dashboard
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="report-container">
+
+  <!-- Loading state -->
+  <div id="loading-state" style="text-align:center;padding:5rem;color:var(--text-secondary)">
+    <div class="spinner" style="width:40px;height:40px;border-width:3px;margin:0 auto 1.5rem"></div>
+    <p>Loading result report…</p>
+  </div>
+
+  <!-- Main report (hidden until loaded) -->
+  <div id="report-content" class="hidden animate-in">
+
+    <!-- Header summary card -->
+    <div class="glass-card card-glow" style="margin-bottom:2rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1.5rem">
+        <div>
+          <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:0.75rem">
+            <span class="badge badge-blue" id="report-subject"></span>
+            <span class="badge badge-gray" id="report-status"></span>
+          </div>
+          <h1 style="margin-bottom:0.5rem" id="report-exam-title">—</h1>
+          <p class="text-muted text-sm" id="report-meta">—</p>
         </div>
-    </nav>
 
-    <main class="container" style="padding-top: 2rem;">
-        <div class="glass-card" style="margin-bottom: 1.5rem;">
-            <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
-                <div>
-                    <h1 style="margin:0;">Evaluation Report</h1>
-                    <p id="report-meta" style="margin:0.5rem 0 0;color:var(--text-secondary);">Loading…</p>
-                </div>
-                <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
-                    <button class="btn btn-secondary" onclick="downloadJson()">Download JSON</button>
-                    <button class="btn btn-primary" onclick="downloadHtml()">Download Report</button>
-                </div>
+        <!-- Score donut -->
+        <div class="score-donut-wrap">
+          <div class="score-ring" id="score-ring"
+               style="width:130px;height:130px;--ring-pct:0;--ring-color:var(--accent-primary)">
+            <div class="score-ring-inner">
+              <div class="score-donut-pct" id="report-pct">0%</div>
+              <div class="score-donut-sub" id="report-score-lbl">—</div>
             </div>
+          </div>
+          <span id="report-grade" class="badge" style="margin-top:0.5rem"></span>
+        </div>
+      </div>
+
+      <!-- Stats strip -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1rem;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)">
+        <div>
+          <div class="text-xs text-muted" style="margin-bottom:0.25rem">Time Taken</div>
+          <div style="font-weight:700" id="report-time">—</div>
+        </div>
+        <div>
+          <div class="text-xs text-muted" style="margin-bottom:0.25rem">Submitted</div>
+          <div style="font-weight:700" id="report-submitted">—</div>
+        </div>
+        <div>
+          <div class="text-xs text-muted" style="margin-bottom:0.25rem">Graded</div>
+          <div style="font-weight:700" id="report-graded">—</div>
+        </div>
+        <div>
+          <div class="text-xs text-muted" style="margin-bottom:0.25rem">Questions</div>
+          <div style="font-weight:700" id="report-questions">—</div>
+        </div>
+        <div>
+          <div class="text-xs text-muted" style="margin-bottom:0.25rem">AI Avg Confidence</div>
+          <div style="font-weight:700" id="report-ai-conf">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-unit breakdown -->
+    <div class="glass-card" style="margin-bottom:2rem" id="breakdown-section">
+      <h3 style="margin-bottom:1.25rem">
+        <i class="fas fa-chart-bar" style="color:var(--accent-primary)"></i> Topic Breakdown
+      </h3>
+      <div id="breakdown-list"></div>
+    </div>
+
+    <!-- Per-question results -->
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+        <h2>Per-Question Review</h2>
+        <div style="display:flex;gap:0.5rem">
+          <button onclick="filterQuestions('all')"     id="filter-all"     class="btn btn-secondary btn-sm active-filter">All</button>
+          <button onclick="filterQuestions('correct')" id="filter-correct" class="btn btn-ghost btn-sm">Correct</button>
+          <button onclick="filterQuestions('partial')" id="filter-partial" class="btn btn-ghost btn-sm">Partial</button>
+          <button onclick="filterQuestions('incorrect')" id="filter-incorrect" class="btn btn-ghost btn-sm">Incorrect</button>
+        </div>
+      </div>
+      <div id="questions-list"></div>
+    </div>
+
+    <!-- Teacher override section (if teacher viewing) -->
+    <div id="teacher-override-section" class="hidden glass-card" style="margin-top:2rem">
+      <h3 style="margin-bottom:1rem">
+        <i class="fas fa-pencil-alt" style="color:var(--warning)"></i> Score Override
+      </h3>
+      <p class="text-sm text-muted" style="margin-bottom:1rem">
+        Manually override individual question scores. Changes recalculate totals immediately.
+      </p>
+      <div id="override-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="src/js/api.legacy.js"></script>
+<script>
+let allQuestions = [];
+let reportData   = {};
+let currentRole  = 'student';
+let urlExamId, urlStudentId;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!localStorage.getItem('token')) { window.location.href = 'login.html'; return; }
+  const params = new URLSearchParams(window.location.search);
+  urlExamId    = params.get('examId');
+  urlStudentId = params.get('studentId');
+  if (!urlExamId) { window.location.href = 'dashboard.html'; return; }
+
+  try {
+    const userResp = await api.getCurrentUser();
+    currentRole = userResp.user.role;
+    loadReport();
+  } catch { window.location.href = 'login.html'; }
+});
+
+async function loadReport() {
+  try {
+    const data = await api.getResultReport(urlExamId, urlStudentId || null);
+    reportData = data;
+    renderReport(data);
+  } catch (err) {
+    document.getElementById('loading-state').innerHTML = `
+      <div style="color:var(--danger);text-align:center;padding:4rem">
+        <i class="fas fa-exclamation-triangle" style="font-size:3rem;margin-bottom:1rem;opacity:0.6"></i>
+        <p>${err.message}</p>
+        <a href="dashboard.html" class="btn btn-secondary" style="margin-top:1rem">Go to Dashboard</a>
+      </div>`;
+  }
+}
+
+function renderReport(data) {
+  document.getElementById('loading-state').classList.add('hidden');
+  document.getElementById('report-content').classList.remove('hidden');
+
+  const pct   = Number(data.percentage || 0).toFixed(1);
+  const score = `${data.totalScore} / ${data.totalMarks}`;
+  let grade = 'F'; let gradeColor = 'badge-red';
+  if (data.percentage >= 90) { grade = 'A+'; gradeColor = 'badge-green'; }
+  else if (data.percentage >= 80) { grade = 'A'; gradeColor = 'badge-green'; }
+  else if (data.percentage >= 70) { grade = 'B'; gradeColor = 'badge-cyan'; }
+  else if (data.percentage >= 60) { grade = 'C'; gradeColor = 'badge-blue'; }
+  else if (data.percentage >= 50) { grade = 'D'; gradeColor = 'badge-yellow'; }
+
+  document.getElementById('report-exam-title').textContent = data.exam?.title || 'Exam Report';
+  document.getElementById('report-meta').textContent =
+    `Student: ${data.student?.name || '—'}  |  Email: ${data.student?.email || '—'}`;
+  document.getElementById('report-subject').textContent = data.exam?.subject || 'General';
+  document.getElementById('report-status').textContent  = data.status || 'evaluated';
+  document.getElementById('report-pct').textContent     = pct + '%';
+  document.getElementById('report-score-lbl').textContent = score;
+  document.getElementById('report-grade').className     = `badge ${gradeColor}`;
+  document.getElementById('report-grade').textContent   = `Grade: ${grade}`;
+
+  // Score ring color + value
+  const ringColor = data.percentage >= 70 ? 'var(--success)' : data.percentage >= 40 ? 'var(--warning)' : 'var(--danger)';
+  const ring = document.getElementById('score-ring');
+  ring.style.setProperty('--ring-pct', pct);
+  ring.style.setProperty('--ring-color', ringColor);
+
+  document.getElementById('report-time').textContent      = formatDuration(data.timeTakenSeconds);
+  document.getElementById('report-submitted').textContent = relativeTime(data.submittedAt);
+  document.getElementById('report-graded').textContent    = relativeTime(data.gradedAt);
+  document.getElementById('report-questions').textContent = data.perQuestion?.length || 0;
+
+  // AI avg confidence
+  const aiConfs = (data.perQuestion || []).map(q => q.confidence || 0);
+  const avgConf = aiConfs.length ? aiConfs.reduce((a, b) => a + b, 0) / aiConfs.length : 0;
+  const confClass = confidenceBadgeClass(avgConf);
+  document.getElementById('report-ai-conf').innerHTML =
+    `<span class="ai-badge ${confClass}">${(avgConf * 100).toFixed(0)}%</span>`;
+
+  // Breakdown
+  renderBreakdown(data.breakdown || []);
+
+  // Questions
+  allQuestions = data.perQuestion || [];
+  renderQuestions(allQuestions);
+
+  // Teacher override
+  if (currentRole === 'teacher' || currentRole === 'admin') {
+    document.getElementById('teacher-override-section').classList.remove('hidden');
+    renderOverrideList(allQuestions);
+  }
+}
+
+function renderBreakdown(breakdown) {
+  if (!breakdown.length) {
+    document.getElementById('breakdown-section').style.display = 'none';
+    return;
+  }
+  document.getElementById('breakdown-list').innerHTML = breakdown.map(b => {
+    const pct = b.maxScore > 0 ? Math.round(b.score / b.maxScore * 100) : 0;
+    const fillClass = pct >= 70 ? 'success' : pct >= 40 ? 'warning' : 'danger';
+    return `
+      <div style="margin-bottom:1rem">
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.4rem">
+          <span><strong>${b.unit}</strong> — ${b.topic}</span>
+          <span style="font-weight:700">${b.score}/${b.maxScore} (${pct}%)</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill ${fillClass}" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderQuestions(questions) {
+  document.getElementById('questions-list').innerHTML = questions.map((q, i) => {
+    const statusClass = q.status === 'Correct' ? 'correct' : q.status === 'Partial' ? 'partial' : 'incorrect';
+    const scorePct = q.maxScore > 0 ? (q.score / q.maxScore * 100).toFixed(0) : 0;
+    const confClass = confidenceBadgeClass(q.confidence || 0);
+    const expected  = Array.isArray(q.expectedAnswer)
+      ? q.expectedAnswer.join(', ')
+      : (q.expectedAnswer || '—');
+
+    return `
+      <div class="question-result-card ${statusClass}" data-status="${statusClass}">
+        <div class="q-header">
+          <div style="flex:1">
+            <div class="q-type">${q.type} · ${q.subject || 'general'}</div>
+            <div style="font-weight:600;margin-top:0.375rem;font-size:0.95rem">${q.questionText || 'Question ' + (i+1)}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div class="q-score ${q.status === 'Correct' ? 'score-high' : q.status === 'Partial' ? 'score-medium' : 'score-low'}">
+              ${q.score} / ${q.maxScore}
+            </div>
+            <div style="font-size:0.7rem;margin-top:0.2rem;color:var(--text-tertiary)">${scorePct}%</div>
+          </div>
         </div>
 
-        <section class="glass-card" style="margin-bottom: 1.5rem;">
-            <h2 style="margin-top:0;">Summary</h2>
-            <div id="summary-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-top:1rem;"></div>
-            <div id="malpractice-box" style="margin-top:1rem;"></div>
-        </section>
+        <div class="answer-block student">
+          <div class="lbl" style="color:hsl(230,80%,72%)">Your Answer</div>
+          <div>${q.submittedAnswer || '<em style="opacity:0.5">No answer submitted</em>'}</div>
+        </div>
 
-        <section class="glass-card" style="margin-bottom: 1.5rem;">
-            <h2 style="margin-top:0;">Score Breakdown</h2>
-            <div id="breakdown" style="margin-top:1rem;"></div>
-        </section>
+        ${q.status !== 'Correct' ? `
+        <div class="answer-block expected">
+          <div class="lbl" style="color:hsl(145,55%,58%)">Expected Answer</div>
+          <div>${expected}</div>
+        </div>` : ''}
 
-        <section class="glass-card">
-            <h2 style="margin-top:0;">Per-Question Evaluation</h2>
-            <div id="per-question" style="margin-top:1rem;"></div>
-        </section>
-    </main>
+        ${q.feedback ? `
+        <div class="ai-feedback-block">
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;color:hsl(230,80%,72%)">
+            <i class="fas fa-robot"></i> AI Feedback
+          </div>
+          ${q.feedback}
+          <div class="ai-meta">
+            <span class="ai-badge ${confClass}">
+              <i class="fas fa-robot"></i> ${((q.confidence || 0) * 100).toFixed(0)}% confidence
+            </span>
+            <span class="badge badge-purple" style="font-size:0.62rem">${q.evaluationMethod || 'ai'}</span>
+            ${q.modelUsed && q.modelUsed !== 'none'
+              ? `<span class="badge badge-blue" style="font-size:0.62rem"><i class="fas fa-microchip"></i> ${q.modelUsed}</span>`
+              : ''}
+            ${q.subjectEvaluated
+              ? `<span class="subject-chip ${q.subjectEvaluated}">${q.subjectEvaluated}</span>`
+              : ''}
+          </div>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
 
-    <script src="src/js/api.legacy.js"></script>
-    <script>
-        const api = new APIClient();
-        let reportData = null;
+function filterQuestions(status) {
+  ['all','correct','partial','incorrect'].forEach(s => {
+    const btn = document.getElementById(`filter-${s}`);
+    btn.className = s === status ? 'btn btn-secondary btn-sm' : 'btn btn-ghost btn-sm';
+  });
+  const filtered = status === 'all' ? allQuestions : allQuestions.filter(q => q.status.toLowerCase() === status);
+  renderQuestions(filtered);
+}
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (!localStorage.getItem('token')) {
-                window.location.href = 'login.html';
-                return;
-            }
+function renderOverrideList(questions) {
+  document.getElementById('override-list').innerHTML = questions.map(q => `
+    <div style="display:flex;align-items:center;gap:1rem;padding:0.75rem 0;border-bottom:1px solid var(--border-subtle)">
+      <div style="flex:1;font-size:0.875rem">${(q.questionText || '').slice(0, 80)}…</div>
+      <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0">
+        <span class="text-xs text-muted">${q.score}/${q.maxScore}</span>
+        <input type="number" id="override-${q.questionId}" value="${q.score}"
+               min="0" max="${q.maxScore}" step="0.5"
+               style="width:70px;text-align:center"
+               title="Override score (0-${q.maxScore})">
+        <button onclick="submitOverride('${q.questionId}', ${q.maxScore})" class="btn btn-warning btn-sm">
+          Save
+        </button>
+      </div>
+    </div>`).join('');
+}
 
-            const params = new URLSearchParams(window.location.search);
-            const examId = params.get('examId');
-            const studentId = params.get('studentId');
-            if (!examId) {
-                window.location.href = 'results.html';
-                return;
-            }
-
-            try {
-                reportData = await api.getResultReport(examId, studentId);
-                renderReport(reportData);
-            } catch (e) {
-                document.getElementById('report-meta').textContent = 'Failed to load report.';
-            }
-        });
-
-        function renderReport(data) {
-            const meta = [];
-            meta.push(`Exam: ${data.exam?.title || 'N/A'}`);
-            if (data.student?.name) {
-                meta.push(`Student: ${data.student.name}`);
-            }
-            if (data.submittedAt) {
-                meta.push(`Submitted: ${new Date(data.submittedAt).toLocaleString()}`);
-            }
-            if (data.gradedAt) {
-                meta.push(`Graded: ${new Date(data.gradedAt).toLocaleString()}`);
-            }
-            document.getElementById('report-meta').textContent = meta.join(' • ');
-
-            const summary = document.getElementById('summary-grid');
-            const timeTaken = data.timeTakenSeconds != null
-                ? `${Math.round(data.timeTakenSeconds / 60)} min`
-                : 'N/A';
-
-            summary.innerHTML = [
-                metricCard('Score', `${data.totalScore}/${data.totalMarks}`),
-                metricCard('Percentage', `${(data.percentage || 0).toFixed(1)}%`),
-                metricCard('Time Taken', timeTaken),
-                metricCard('Questions', `${data.perQuestion?.length || 0}`)
-            ].join('');
-
-            const malpracticeBox = document.getElementById('malpractice-box');
-            const flags = data.malpractice?.flags || [];
-            const violations = data.malpractice?.violations || 0;
-            if (violations > 0) {
-                malpracticeBox.innerHTML = `
-                    <div style="background: rgba(239,68,68,0.1); padding: 1rem; border-radius: 8px;">
-                        <strong>Malpractice Flags:</strong> ${violations}
-                        <ul style="margin-top:0.5rem;">
-                            ${flags.map(f => `<li>${escapeHtml(f.reason)} (${new Date(f.timestamp).toLocaleTimeString()})</li>`).join('')}
-                        </ul>
-                    </div>
-                `;
-            } else {
-                malpracticeBox.innerHTML = `
-                    <div style="background: rgba(16,185,129,0.1); padding: 1rem; border-radius: 8px;">
-                        <strong>Malpractice Flags:</strong> None detected.
-                    </div>
-                `;
-            }
-
-            const breakdown = document.getElementById('breakdown');
-            if (!data.breakdown || data.breakdown.length === 0) {
-                breakdown.innerHTML = '<p style="color:var(--text-secondary);">No unit/topic tags available.</p>';
-            } else {
-                breakdown.innerHTML = data.breakdown.map(item => `
-                    <div class="glass-card" style="margin-bottom:0.75rem;">
-                        <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;">
-                            <div>
-                                <strong>${escapeHtml(item.unit)}</strong>
-                                <div style="color:var(--text-secondary);font-size:0.9rem;">${escapeHtml(item.topic)}</div>
-                            </div>
-                            <div style="font-weight:bold;">${item.score}/${item.maxScore}</div>
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            const perQuestion = document.getElementById('per-question');
-            perQuestion.innerHTML = (data.perQuestion || []).map((q, idx) => `
-                <div class="glass-card" style="margin-bottom:1rem;">
-                    <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-                        <div style="flex:1;">
-                            <div style="color:var(--text-secondary);font-size:0.9rem;">
-                                Q${idx + 1} • ${q.type} • ${q.unit} / ${q.topic}
-                            </div>
-                            <div style="margin:0.5rem 0;white-space:pre-wrap;">${escapeHtml(q.questionText)}</div>
-                            <div style="color:var(--text-secondary);font-size:0.9rem;">Expected: ${formatExpected(q.expectedAnswer)}</div>
-                            <div style="color:var(--text-secondary);font-size:0.9rem;">Submitted: ${escapeHtml(q.submittedAnswer || '')}</div>
-                        </div>
-                        <div style="text-align:right;min-width:140px;">
-                            <div style="font-weight:bold;">${q.score}/${q.maxScore}</div>
-                            <div class="status-badge ${statusBadge(q.status)}">${q.status}</div>
-                            <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.5rem;">
-                                Method: ${escapeHtml(q.evaluationMethod || 'pending')}
-                            </div>
-                        </div>
-                    </div>
-                    ${renderTestCases(q.testCases)}
-                    ${q.feedback ? `<div style="margin-top:0.5rem;color:var(--text-secondary);"><strong>Feedback:</strong> ${escapeHtml(q.feedback)}</div>` : ''}
-                </div>
-            `).join('');
-        }
-
-        function renderTestCases(testCases) {
-            if (!testCases || testCases.length === 0) return '';
-            return `
-                <div style="margin-top:0.75rem;">
-                    <strong>Testcases</strong>
-                    <ul style="margin-top:0.5rem;">
-                        ${testCases.map(tc => `<li>${escapeHtml(tc.input || '')} => ${escapeHtml(tc.expectedOutput || '')} (${tc.weight || 1})</li>`).join('')}
-                    </ul>
-                </div>
-            `;
-        }
-
-        function metricCard(label, value) {
-            return `
-                <div style="background: rgba(59,130,246,0.1); padding: 1rem; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 1.6rem; font-weight: bold; color: var(--accent-primary);">${value}</div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">${label}</div>
-                </div>
-            `;
-        }
-
-        function statusBadge(status) {
-            if (status === 'Correct') return 'bg-active';
-            if (status === 'Partial') return 'bg-draft';
-            return 'bg-inactive';
-        }
-
-        function formatExpected(expected) {
-            if (Array.isArray(expected)) return expected.map(escapeHtml).join(', ');
-            return escapeHtml(expected || 'N/A');
-        }
-
-        function downloadJson() {
-            if (!reportData) return;
-            const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            triggerDownload(url, 'evaluation-report.json');
-        }
-
-        function downloadHtml() {
-            if (!reportData) return;
-            const html = document.documentElement.outerHTML;
-            const blob = new Blob([html], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            triggerDownload(url, 'evaluation-report.html');
-        }
-
-        function triggerDownload(url, filename) {
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
-
-        function escapeHtml(text) {
-            return String(text || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-    </script>
+async function submitOverride(questionId, maxScore) {
+  const inp   = document.getElementById(`override-${questionId}`);
+  const score = parseFloat(inp.value);
+  if (isNaN(score) || score < 0 || score > maxScore) {
+    Toast.error(`Score must be 0–${maxScore}`);
+    return;
+  }
+  try {
+    const targetStudentId = urlStudentId || reportData.student?._id;
+    await api.overrideScore(urlExamId, targetStudentId, questionId, score, '');
+    Toast.success('Score updated!');
+    loadReport();
+  } catch (e) { Toast.error(e.message); }
+}
+</script>
 </body>
 </html>
-

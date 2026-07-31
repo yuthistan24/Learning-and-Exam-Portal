@@ -217,12 +217,22 @@ exports.runCode = async (req, res) => {
 
     const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
     
+    // Convert test_cases to testCases for FastAPI schema
+    const rawTestCases = rubric.test_cases || rubric.testCases || [{ input, expected_output: '', weight: 1 }];
+    const testCases = rawTestCases.map(tc => ({
+      input: tc.input || '',
+      expectedOutput: tc.expectedOutput || tc.expected_output || '',
+      weight: tc.weight || 1
+    }));
+
     const response = await axios.post(`${pythonServiceUrl}/api/evaluate`, {
       answer: code,
+      question: questionId ? (await Question.findById(questionId))?.text || '' : '',
+      question_type: 'programming',
       rubric: {
         ...rubric,
         method: 'programming',
-        test_cases: rubric.test_cases || rubric.testCases || [{ input, expected_output: '', weight: 1 }]
+        testCases: testCases
       }
     }, {
       timeout: parseInt(process.env.PYTHON_SERVICE_TIMEOUT) || 30000
@@ -233,6 +243,40 @@ exports.runCode = async (req, res) => {
     logger.error(`Code execution error: ${error.message}`);
     res.status(error.response?.status || 500).json({
       message: 'Failed to execute code',
+      error: error.response?.data || error.message
+    });
+  }
+};
+
+// Evaluate practice answer (short/long text)
+exports.evaluatePractice = async (req, res) => {
+  try {
+    const { answerText, questionId } = req.body;
+    
+    if (!answerText) {
+      throw new AppError('Answer text is required', 400);
+    }
+
+    const question = await Question.findById(questionId);
+    if (!question) {
+      throw new AppError('Question not found', 404);
+    }
+
+    const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000';
+    const response = await axios.post(`${pythonServiceUrl}/api/evaluate`, {
+      answer: answerText,
+      question: question.text || '',
+      question_type: question.type || 'short_answer',
+      rubric: question.rubric || {}
+    }, {
+      timeout: parseInt(process.env.PYTHON_SERVICE_TIMEOUT) || 30000
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    logger.error(`Evaluation error: ${error.message}`);
+    res.status(error.response?.status || 500).json({
+      message: 'Failed to evaluate answer',
       error: error.response?.data || error.message
     });
   }

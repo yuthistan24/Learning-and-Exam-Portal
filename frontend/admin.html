@@ -1,251 +1,250 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Global Exams</title>
-    <link rel="stylesheet" href="src/css/style.css">
-    <link rel="stylesheet" href="src/css/enhanced-style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Control Center — Global Exams</title>
+  <meta name="description" content="System administration, user management, and global platform metrics.">
+  <link rel="stylesheet" href="src/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body { padding-top: var(--navbar-height); }
+    main { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+  </style>
 </head>
 <body>
-    <div class="bg-mesh"></div>
+<div class="bg-mesh"></div>
+<div id="toast-container"></div>
 
-    <nav class="navbar">
-        <div class="navbar-container">
-            <div class="navbar-brand">Global Exams</div>
-            <ul class="navbar-menu">
-                <li><a href="dashboard.html" class="btn btn-secondary" style="color:var(--text-secondary)">Dashboard</a></li>
-                <li><a href="#" onclick="logout()" class="btn btn-secondary" style="color:var(--text-secondary)">Logout</a></li>
-            </ul>
+<nav class="navbar">
+  <div class="navbar-container">
+    <a href="dashboard.html" class="navbar-brand">
+      <i class="fas fa-graduation-cap"></i> Global Exams
+    </a>
+    <ul class="navbar-menu">
+      <li>
+        <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle theme">
+          <i class="fas fa-sun"></i>
+        </button>
+      </li>
+      <li><span id="admin-user-display" style="color:var(--text-secondary);font-size:0.9rem">Admin</span></li>
+      <li><a href="dashboard.html" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Dashboard</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="dashboard-header animate-in">
+    <div>
+      <h1><i class="fas fa-user-shield" style="color:var(--danger)"></i> Admin Control Center</h1>
+      <p class="text-muted">User management, system metrics, and course administration.</p>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="stats-grid" style="margin-bottom:2rem">
+    <div class="glass-card stat-card">
+      <span class="val" id="stat-users">0</span>
+      <span class="lab">Total Users</span>
+    </div>
+    <div class="glass-card stat-card">
+      <span class="val" id="stat-exams">0</span>
+      <span class="lab">Total Exams</span>
+    </div>
+    <div class="glass-card stat-card">
+      <span class="val" id="stat-results">0</span>
+      <span class="lab">Submissions</span>
+    </div>
+    <div class="glass-card stat-card">
+      <span class="val" id="stat-courses">0</span>
+      <span class="lab">Active Courses</span>
+    </div>
+  </div>
+
+  <!-- Top forms grid -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem; align-items:start">
+    <!-- Create User -->
+    <div class="glass-card">
+      <h3 style="margin-bottom:1.25rem"><i class="fas fa-user-plus" style="color:var(--accent-primary)"></i> Create User</h3>
+      <form onsubmit="handleCreateUser(event)">
+        <div class="form-group">
+          <label for="new-name">Full Name</label>
+          <input type="text" id="new-name" required placeholder="Alex Johnson">
         </div>
-    </nav>
-
-    <main class="container" style="padding-top: 2rem;">
-        <div class="dashboard-header">
-            <div>
-                <h1>Admin Control Center</h1>
-                <p style="color:var(--text-secondary);">User management, exams, and system metrics.</p>
-            </div>
+        <div class="form-group">
+          <label for="new-email">Email Address</label>
+          <input type="email" id="new-email" required placeholder="alex@college.edu">
         </div>
-
-        <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:1.5rem;">
-            <div class="glass-card">
-                <div style="font-size:2rem;font-weight:bold;color:var(--accent-primary);" id="stat-users">0</div>
-                <div style="color:var(--text-secondary);margin-top:0.5rem;">Total Users</div>
-            </div>
-            <div class="glass-card">
-                <div style="font-size:2rem;font-weight:bold;color:var(--accent-secondary);" id="stat-exams">0</div>
-                <div style="color:var(--text-secondary);margin-top:0.5rem;">Total Exams</div>
-            </div>
-            <div class="glass-card">
-                <div style="font-size:2rem;font-weight:bold;color:var(--success);" id="stat-results">0</div>
-                <div style="color:var(--text-secondary);margin-top:0.5rem;">Total Results</div>
-            </div>
-            <div class="glass-card">
-                <div style="font-size:2rem;font-weight:bold;color:var(--warning);" id="stat-courses">0</div>
-                <div style="color:var(--text-secondary);margin-top:0.5rem;">Active Courses</div>
-            </div>
-        </section>
-
-        <section style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:2rem;align-items:start;">
-            <div class="glass-card">
-                <h2 style="margin-top:0;">Create User</h2>
-                <form onsubmit="createUser(event)">
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" id="new-name" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="new-email" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="new-password" required minlength="8">
-                    </div>
-                    <div class="form-group">
-                        <label>Role</label>
-                        <select id="new-role" required>
-                            <option value="student">Student</option>
-                            <option value="teacher">Teacher</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-primary" type="submit" style="width:100%;">Create User</button>
-                </form>
-            </div>
-
-            <div class="glass-card">
-                <h2 style="margin-top:0;">Recent Exams</h2>
-                <div id="exam-list" style="margin-top:1rem;">
-                    <div style="color:var(--text-secondary);">Loading…</div>
-                </div>
-            </div>
-        </section>
-
-        <section class="glass-card" style="margin-top:2rem;">
-            <h2 style="margin-top:0;">Users</h2>
-            <div style="overflow-x:auto;">
-                <table style="width:100%;border-collapse:collapse;">
-                    <thead>
-                        <tr style="border-bottom:2px solid var(--border);">
-                            <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Name</th>
-                            <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Email</th>
-                            <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Role</th>
-                            <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Enrolled Courses</th>
-                            <th style="padding:0.75rem;text-align:left;color:var(--text-secondary);">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="user-list"></tbody>
-                </table>
-            </div>
-        </section>
-    </main>
-
-    <div id="assign-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3 id="assign-title">Assign Course</h3>
-            <p id="assign-user-info" style="color:var(--text-secondary); margin-bottom:1.5rem;"></p>
-            <div class="form-group">
-                <label>Select Course</label>
-                <select id="assign-course-select"></select>
-            </div>
-            <div style="display:flex; gap:1rem; margin-top:2rem;">
-                <button class="btn btn-primary" onclick="confirmAssignment()" style="flex:1;">Confirm</button>
-                <button class="btn btn-secondary" onclick="hideAssignModal()" style="flex:1;">Cancel</button>
-            </div>
+        <div class="form-group">
+          <label for="new-password">Password</label>
+          <input type="password" id="new-password" required minlength="8" placeholder="Minimum 8 characters">
         </div>
+        <div class="form-group">
+          <label for="new-role">System Role</label>
+          <select id="new-role" required>
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full"><i class="fas fa-check"></i> Create User</button>
+      </form>
     </div>
 
-    <script src="src/js/api.legacy.js"></script>
-    <script>
-        const api = new APIClient();
+    <!-- System Info / Recent Exams -->
+    <div class="glass-card">
+      <h3 style="margin-bottom:1.25rem"><i class="fas fa-file-alt" style="color:var(--accent-secondary)"></i> Recent Exams</h3>
+      <div id="exam-list" style="display:flex; flex-direction:column; gap:0.75rem">
+        <div style="color:var(--text-secondary); text-align:center; padding:2rem"><div class="spinner" style="margin:0 auto 0.5rem"></div>Loading…</div>
+      </div>
+    </div>
+  </div>
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (!localStorage.getItem('token')) {
-                window.location.href = 'login.html';
-                return;
-            }
+  <!-- User Management Table -->
+  <div class="glass-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
+      <h2><i class="fas fa-users-cog" style="color:var(--accent-primary)"></i> User Management</h2>
+      <span class="badge badge-blue" id="user-count-badge">0 Users</span>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Enrolled Courses</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="user-list">
+          <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-secondary)">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
 
-            try {
-                const me = await api.getCurrentUser();
-                if (me.user.role !== 'admin') {
-                    window.location.href = 'dashboard.html';
-                    return;
-                }
+<script src="src/js/api.legacy.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!localStorage.getItem('token')) { window.location.href = 'login.html'; return; }
+  try {
+    const me = await api.getCurrentUser();
+    if (me.user.role !== 'admin') {
+      Toast.error('Admin access required.');
+      setTimeout(() => window.location.href = 'dashboard.html', 1200);
+      return;
+    }
+    document.getElementById('admin-user-display').textContent = me.user.name;
+    loadDashboardStats();
+    loadUsers();
+    loadExams();
+  } catch { logout(); }
+});
 
-                await loadStats();
-                await loadUsers();
-                await loadExams();
-            } catch (e) {
-                logout();
-            }
-        });
+async function loadDashboardStats() {
+  try {
+    const data = await api.request('GET', '/admin/dashboard');
+    document.getElementById('stat-users').textContent   = data.totalUsers   || 0;
+    document.getElementById('stat-exams').textContent   = data.totalExams   || 0;
+    document.getElementById('stat-results').textContent = data.totalResults || 0;
+    document.getElementById('stat-courses').textContent = data.totalCourses || 0;
+  } catch {}
+}
 
-        async function loadStats() {
-            const dashboard = await api.request('GET', '/admin/dashboard');
-            document.getElementById('stat-users').textContent = dashboard.totalUsers;
-            document.getElementById('stat-exams').textContent = dashboard.totalExams;
-            document.getElementById('stat-results').textContent = dashboard.totalResults;
-            document.getElementById('stat-courses').textContent = dashboard.totalCourses || 0;
-        }
+async function loadUsers() {
+  const tbody = document.getElementById('user-list');
+  try {
+    const res = await api.request('GET', '/admin/users');
+    const users = res.users || [];
+    document.getElementById('user-count-badge').textContent = `${users.length} User${users.length !== 1 ? 's' : ''}`;
 
-        async function loadUsers() {
-            const response = await api.request('GET', '/admin/users');
-            const tbody = document.getElementById('user-list');
-            tbody.innerHTML = response.users.map(user => {
-                const enrolled = (user.enrolledCourses || []).map(c => c.code || c).join(', ') || 'None';
-                return `
-                    <tr style="border-bottom:1px solid var(--border);">
-                        <td style="padding:0.75rem;">${user.name}</td>
-                        <td style="padding:0.75rem;">${user.email}</td>
-                        <td style="padding:0.75rem;">${user.role}</td>
-                        <td style="padding:0.75rem; color:var(--accent-primary); font-size:0.85rem;">${enrolled}</td>
-                        <td style="padding:0.75rem; display:flex; gap:0.5rem;">
-                            ${user.role === 'student' ? `<button class="btn btn-secondary btn-sm" onclick="showAssignModal('${user._id}', '${user.name}')">Assign</button>` : ''}
-                            <button class="btn btn-danger btn-sm" onclick="deleteUser('${user._id}')">Delete</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
+    const roleBadges = { student:'badge-blue', teacher:'badge-yellow', admin:'badge-red' };
 
-        async function loadExams() {
-            const response = await api.getExams();
-            const list = document.getElementById('exam-list');
-            if (!response.exams || response.exams.length === 0) {
-                list.innerHTML = '<div style="color:var(--text-secondary);">No exams found.</div>';
-                return;
-            }
-            list.innerHTML = response.exams.slice(0, 6).map(exam => `
-                <div style="border-bottom:1px solid var(--border);padding:0.75rem 0;">
-                    <div style="font-weight:600;">${exam.title}</div>
-                    <div style="color:var(--text-secondary);font-size:0.9rem;">${exam.description || ''}</div>
-                    <div style="color:var(--text-secondary);font-size:0.85rem;">Status: ${exam.status}</div>
-                </div>
-            `).join('');
-        }
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td><strong>${u.name}</strong></td>
+        <td class="text-muted text-sm">${u.email}</td>
+        <td>
+          <select onchange="updateRole('${u._id}', this.value)" class="btn btn-secondary btn-sm" style="padding:0.2rem 0.5rem">
+            <option value="student" ${u.role === 'student' ? 'selected' : ''}>Student</option>
+            <option value="teacher" ${u.role === 'teacher' ? 'selected' : ''}>Teacher</option>
+            <option value="admin"   ${u.role === 'admin'   ? 'selected' : ''}>Admin</option>
+          </select>
+        </td>
+        <td>
+          <span class="text-xs text-muted">
+            ${(u.enrolledCourses || []).length} course${(u.enrolledCourses || []).length !== 1 ? 's' : ''}
+          </span>
+        </td>
+        <td>
+          <button onclick="deleteUser('${u._id}')" class="btn btn-danger btn-sm">
+            <i class="fas fa-trash"></i> Delete
+          </button>
+        </td>
+      </tr>`).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger);text-align:center">${err.message}</td></tr>`;
+  }
+}
 
-        async function createUser(event) {
-            event.preventDefault();
-            const payload = {
-                name: document.getElementById('new-name').value,
-                email: document.getElementById('new-email').value,
-                password: document.getElementById('new-password').value,
-                role: document.getElementById('new-role').value
-            };
+async function loadExams() {
+  const container = document.getElementById('exam-list');
+  try {
+    const res = await api.getExams();
+    const exams = (res.exams || []).slice(0, 5);
+    if (!exams.length) {
+      container.innerHTML = '<div style="color:var(--text-secondary);text-align:center">No exams created yet.</div>';
+      return;
+    }
+    container.innerHTML = exams.map(e => `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; background:var(--bg-overlay); border-radius:var(--radius-md); border:1px solid var(--border-subtle)">
+        <div>
+          <div style="font-weight:600; font-size:0.875rem">${e.title}</div>
+          <div class="text-xs text-muted">${e.subject || 'General'} · ${e.duration} min</div>
+        </div>
+        <span class="badge ${e.status === 'active' ? 'badge-green' : 'badge-gray'}">${e.status}</span>
+      </div>`).join('');
+  } catch {}
+}
 
-            await api.request('POST', '/admin/users', payload);
-            event.target.reset();
-            await loadUsers();
-            await loadStats();
-        }
+async function handleCreateUser(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating…';
+  try {
+    await api.createUser({
+      name:     document.getElementById('new-name').value,
+      email:    document.getElementById('new-email').value,
+      password: document.getElementById('new-password').value,
+      role:     document.getElementById('new-role').value,
+    });
+    Toast.success('User created successfully!');
+    e.target.reset();
+    loadUsers();
+    loadDashboardStats();
+  } catch (err) { Toast.error(err.message); }
+  finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Create User'; }
+}
 
-        let currentAssignUserId = null;
-        async function showAssignModal(userId, userName) {
-            currentAssignUserId = userId;
-            document.getElementById('assign-user-info').textContent = `Assigning course to: ${userName}`;
-            
-            // Load courses if not already loaded or every time to be safe
-            const coursesRes = await api.getCourses();
-            const select = document.getElementById('assign-course-select');
-            select.innerHTML = coursesRes.courses.map(c => `
-                <option value="${c._id}">${c.code} - ${c.title}</option>
-            `).join('');
-            
-            document.getElementById('assign-modal').classList.remove('hidden');
-        }
+async function updateRole(userId, role) {
+  try {
+    await api.updateUserRole(userId, role);
+    Toast.success('User role updated!');
+    loadUsers();
+  } catch (err) { Toast.error(err.message); }
+}
 
-        function hideAssignModal() {
-            document.getElementById('assign-modal').classList.add('hidden');
-            currentAssignUserId = null;
-        }
-
-        async function confirmAssignment() {
-            const courseId = document.getElementById('assign-course-select').value;
-            if (!courseId || !currentAssignUserId) return;
-
-            try {
-                await api.request('POST', `/admin/users/${currentAssignUserId}/courses`, { courseId });
-                alert('Course assigned successfully');
-                hideAssignModal();
-                await loadUsers();
-            } catch (e) {
-                alert('Failed to assign course: ' + e.message);
-            }
-        }
-
-        async function deleteUser(userId) {
-            if (!confirm('Delete this user permanently?')) return;
-            await api.request('DELETE', `/admin/users/${userId}`);
-            await loadUsers();
-            await loadStats();
-        }
-
-        function logout() {
-            api.logout();
-            window.location.href = 'login.html';
-        }
-    </script>
+async function deleteUser(userId) {
+  if (!confirm('Permanently delete this user account?')) return;
+  try {
+    await api.deleteUser(userId);
+    Toast.success('User deleted.');
+    loadUsers();
+    loadDashboardStats();
+  } catch (err) { Toast.error(err.message); }
+}
+</script>
 </body>
 </html>

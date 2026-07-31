@@ -1,79 +1,367 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proctored Exam - Global Exams</title>
-    <link rel="stylesheet" href="src/css/style.css">
-    <link rel="stylesheet" href="src/css/enhanced-style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="src/js/api.legacy.js"></script>
-    <script src="src/js/proctor.js"></script>
-    <script src="src/js/app.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Examination Environment — Global Exams</title>
+  <link rel="stylesheet" href="src/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+  <style>
+    body { padding-top: var(--navbar-height); user-select: none; }
+
+    .exam-wrapper {
+      max-width: 1300px; margin: 0 auto; padding: 1.5rem;
+      display: grid; grid-template-columns: 1fr 320px; gap: 1.5rem;
+    }
+
+    /* Proctor bar */
+    .proctor-bar {
+      grid-column: 1 / -1;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.875rem 1.25rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 0.5rem;
+    }
+
+    /* Question box */
+    .question-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 2rem;
+      position: relative;
+    }
+
+    .question-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.25rem; padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .question-num {
+      font-family: var(--font-display); font-size: 1.1rem; font-weight: 700;
+    }
+
+    /* Options */
+    .option-label {
+      display: flex; align-items: center; gap: 0.875rem;
+      padding: 1rem 1.25rem;
+      background: var(--bg-overlay);
+      border: 1.5px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      cursor: pointer; transition: all 0.2s;
+      margin-bottom: 0.75rem; font-size: 0.95rem;
+    }
+    .option-label:hover { border-color: var(--accent-primary); background: var(--bg-hover); }
+    .option-label input[type="radio"]:checked + span { color: var(--text-primary); font-weight: 600; }
+    .option-label:has(input:checked) {
+      border-color: var(--accent-primary);
+      background: hsla(230, 70%, 55%, 0.1);
+    }
+
+    /* Timer box */
+    .timer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 1.5rem; text-align: center;
+      margin-bottom: 1.25rem;
+    }
+    .timer-display {
+      font-family: var(--font-mono); font-size: 2.25rem; font-weight: 700;
+      color: hsl(230, 80%, 72%); letter-spacing: 0.05em;
+      margin: 0.5rem 0;
+    }
+    .timer-display.warning { color: var(--warning); animation: pulse 1s infinite; }
+    .timer-display.danger  { color: var(--danger);  animation: pulse 0.5s infinite; }
+
+    @keyframes pulse { 50% { opacity: 0.5; } }
+
+    /* Palette grid */
+    .palette-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem;
+    }
+    .palette-btn {
+      aspect-ratio: 1; border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--bg-overlay); color: var(--text-secondary);
+      font-weight: 600; font-size: 0.85rem; cursor: pointer;
+      transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+    }
+    .palette-btn:hover  { border-color: var(--border-strong); color: var(--text-primary); }
+    .palette-btn.current{ border-color: var(--accent-primary); background: hsla(230, 70%, 55%, 0.2); color: var(--text-primary); font-weight: 800; }
+    .palette-btn.answered{ background: hsla(145, 65%, 42%, 0.2); border-color: var(--success); color: var(--success); }
+
+    /* OCR upload box inside answer box */
+    .ocr-answer-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.35rem 0.75rem; font-size: 0.78rem;
+      background: hsla(270, 65%, 60%, 0.12); color: hsl(270, 75%, 75%);
+      border: 1px solid hsla(270, 65%, 60%, 0.25);
+      border-radius: var(--radius-md); cursor: pointer;
+      transition: all 0.2s;
+    }
+    .ocr-answer-btn:hover { background: hsla(270, 65%, 60%, 0.22); }
+
+    @media (max-width: 900px) {
+      .exam-wrapper { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
-<body style="background-color: var(--bg-primary);">
-    <div class="bg-mesh"></div>
+<body>
+<div class="bg-mesh"></div>
+<div id="toast-container"></div>
 
-    <main class="container exam-window">
-        <nav class="navbar">
-        <div class="navbar-container">
-            <div class="navbar-brand">Global Exams</div>
-            <ul class="navbar-menu">
-                <li>
-                    <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
-                        <i class="fas fa-sun"></i>
-                    </button>
-                </li>
-                <li><span id="user-display" style="color:var(--text-secondary); font-size:0.9rem;">Loading...</span></li>
-            </ul>
+<!-- Top Navbar -->
+<nav class="navbar">
+  <div class="navbar-container">
+    <span class="navbar-brand">
+      <i class="fas fa-shield-alt" style="color:var(--accent-primary)"></i> Secure Exam Environment
+    </span>
+    <div style="display:flex; align-items:center; gap:1rem">
+      <span class="badge badge-purple" id="exam-proctor-status">Proctored Active</span>
+      <button class="theme-toggle" onclick="api.toggleTheme()"><i class="fas fa-sun"></i></button>
+    </div>
+  </div>
+</nav>
+
+<!-- Exam Container -->
+<div class="exam-wrapper" id="exam-app">
+
+  <!-- Main Question Area -->
+  <div>
+    <!-- Proctor Header -->
+    <div class="proctor-bar">
+      <div>
+        <h2 id="exam-title" style="font-size:1.1rem; margin:0">Loading Exam…</h2>
+        <span id="exam-subject-chip" class="subject-chip general" style="font-size:0.7rem">General</span>
+      </div>
+      <div style="text-align:right">
+        <span style="font-size:0.75rem; color:var(--text-tertiary)">Malpractice Monitor</span>
+        <div id="proctor-flags" class="badge badge-green" style="margin-left:0.5rem">0 Flags</div>
+      </div>
+    </div>
+
+    <!-- Question Card -->
+    <div class="question-box animate-in" id="question-card">
+      <div class="question-meta">
+        <div class="question-num" id="q-num-label">Question 1</div>
+        <div style="display:flex; gap:0.5rem; align-items:center">
+          <span class="badge badge-blue" id="q-subject-tag">general</span>
+          <span class="badge badge-gray" id="q-marks-tag">1 mark</span>
         </div>
-    </nav>
-        <!-- Exam Interface -->
-        <div id="exam-section">
-            <div class="exam-header">
-                <h2 id="exam-title">Loading Exam Environment...</h2>
-                <div class="exam-timer" id="exam-timer">00:00</div>
-            </div>
-            
-            <div id="questions-container" class="questions-container">
-                <!-- Javascript will populate questions here dynamically -->
-            </div>
-            
-            <div class="exam-footer">
-                <button onclick="submitExam(false)" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 3rem;">Submit Exam</button>
-            </div>
-        </div>
+      </div>
 
-        <!-- Results Display Overlay -->
-        <div id="results-section" class="hidden">
-            <div class="glass-card" style="margin-top: 3rem;">
-                <h2>Exam Complete</h2>
-                <div id="results-container" style="margin-top: 2rem;">
-                    <!-- Auto-graded results inserted here -->
-                </div>
-                <div style="text-align: center; margin-top: 2rem;">
-                    <a href="/dashboard.html" class="btn btn-primary">Return to Dashboard</a>
-                </div>
-            </div>
-        </div>
-    </main>
+      <!-- Question Text -->
+      <div id="q-text-body" style="font-size:1.05rem; line-height:1.7; margin-bottom:1.5rem"></div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const targetExamId = urlParams.get('id');
-            
-            if (!localStorage.getItem('token') || !targetExamId) {
-                window.location.href = 'login.html';
-                return;
-            }
+      <!-- Input Area -->
+      <div id="q-input-area"></div>
 
-            // Start standard exam protocol from app.js
-            startExam(targetExamId).catch(err => {
-                alert("Failed to securely load exam env: " + err.message);
-                window.location.href = 'dashboard.html';
-            });
-        });
-    </script>
+      <!-- Navigation buttons -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--border)">
+        <button id="prev-btn" onclick="navigateQuestion(-1)" class="btn btn-secondary btn-sm" disabled>
+          <i class="fas fa-arrow-left"></i> Previous
+        </button>
+        <div style="font-size:0.85rem; color:var(--text-tertiary)" id="q-progress-lbl">1 of 1</div>
+        <button id="next-btn" onclick="navigateQuestion(1)" class="btn btn-secondary btn-sm">
+          Next <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar: Timer + Palette -->
+  <div>
+    <!-- Timer Card -->
+    <div class="timer-card">
+      <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-tertiary)">
+        Time Remaining
+      </div>
+      <div class="timer-display" id="exam-timer">--:--</div>
+      <div style="font-size:0.75rem; color:var(--text-secondary)" id="timer-duration-lbl">Duration: -- min</div>
+    </div>
+
+    <!-- Question Palette -->
+    <div class="glass-card" style="margin-bottom:1.25rem">
+      <h4 style="font-size:0.875rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center">
+        <span>Question Palette</span>
+        <span class="badge badge-gray" id="answered-count">0/0</span>
+      </h4>
+      <div class="palette-grid" id="palette-grid"></div>
+    </div>
+
+    <!-- Submit Action -->
+    <button onclick="confirmSubmitExam()" class="btn btn-primary btn-full btn-lg">
+      <i class="fas fa-paper-plane"></i> Submit Exam
+    </button>
+  </div>
+
+</div>
+
+<!-- Hidden file input for student OCR answer upload -->
+<input type="file" id="ocr-answer-file" accept="image/*" style="display:none" onchange="processStudentAnswerOCR(this)">
+
+<script src="src/js/api.legacy.js"></script>
+<script src="src/js/proctor.js"></script>
+<script src="src/js/app.js"></script>
+<script>
+let currentQIndex = 0;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const params  = new URLSearchParams(window.location.search);
+  const examId  = params.get('id');
+  if (!examId || !localStorage.getItem('token')) {
+    window.location.href = 'login.html'; return;
+  }
+  startExam(examId).catch(err => {
+    Toast.error('Failed to load exam: ' + err.message);
+    setTimeout(() => window.location.href = 'dashboard.html', 2000);
+  });
+});
+
+function updateQuestionView(idx) {
+  if (!currentQuestions || !currentQuestions.length) return;
+  currentQIndex = Math.max(0, Math.min(idx, currentQuestions.length - 1));
+  const q = currentQuestions[currentQIndex];
+
+  document.getElementById('q-num-label').textContent = `Question ${currentQIndex + 1}`;
+  document.getElementById('q-subject-tag').textContent = q.subject || 'general';
+  document.getElementById('q-marks-tag').textContent   = `${q.marks} mark${q.marks !== 1 ? 's' : ''}`;
+  document.getElementById('q-text-body').innerHTML    = escapeHtml(q.text).replace(/\n/g, '<br>');
+  document.getElementById('q-progress-lbl').textContent= `${currentQIndex + 1} of ${currentQuestions.length}`;
+
+  document.getElementById('prev-btn').disabled = currentQIndex === 0;
+  document.getElementById('next-btn').disabled = currentQIndex === currentQuestions.length - 1;
+
+  // Render input
+  const inputArea = document.getElementById('q-input-area');
+  inputArea.innerHTML = '';
+
+  if (q.type === 'mcq') {
+    const optsDiv = document.createElement('div');
+    (q.options || []).forEach(opt => {
+      const isChecked = (q.userAnswer === opt.text);
+      const label = document.createElement('label');
+      label.className = 'option-label';
+      label.innerHTML = `
+        <input type="radio" name="q_${q._id}" value="${escapeHtml(opt.text)}" ${isChecked ? 'checked' : ''}>
+        <span>${escapeHtml(opt.text)}</span>
+      `;
+      label.querySelector('input').addEventListener('change', (e) => {
+        q.userAnswer = e.target.value;
+        submitAnswerToServer(currentExam._id, q._id, e.target.value);
+        updatePalette();
+      });
+      optsDiv.appendChild(label);
+    });
+    inputArea.appendChild(optsDiv);
+  } else if (q.type === 'programming') {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem">
+        <span class="text-xs text-muted font-mono"><i class="fas fa-code"></i> Python Code Editor</span>
+        <button onclick="runCode('${currentExam._id}', '${q._id}')" class="btn btn-secondary btn-sm">
+          <i class="fas fa-play"></i> Run Code
+        </button>
+      </div>
+      <textarea id="q${q._id}" class="code-textarea" rows="10" placeholder="# Write Python code here…">${q.userAnswer || ''}</textarea>
+      <div id="output-q${q._id}" class="code-output hidden" style="margin-top:0.75rem">
+        <pre class="output-content"></pre>
+      </div>
+    `;
+    inputArea.appendChild(wrap);
+    const ta = wrap.querySelector('textarea');
+    ta.addEventListener('change', () => {
+      q.userAnswer = ta.value;
+      submitAnswerToServer(currentExam._id, q._id, ta.value);
+      updatePalette();
+    });
+  } else {
+    // Short/long answer with OCR upload support
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem">
+        <label style="margin:0; font-size:0.8rem">Your Written Answer</label>
+        <button type="button" onclick="triggerStudentOCR('${q._id}')" class="ocr-answer-btn">
+          <i class="fas fa-camera"></i> Scan Handwritten Photo (OCR)
+        </button>
+      </div>
+      <textarea id="q${q._id}" rows="6" placeholder="Type your answer here or scan handwritten sheet photo via OCR above…">${q.userAnswer || ''}</textarea>
+    `;
+    inputArea.appendChild(wrap);
+    const ta = wrap.querySelector('textarea');
+    ta.addEventListener('change', () => {
+      q.userAnswer = ta.value;
+      submitAnswerToServer(currentExam._id, q._id, ta.value);
+      updatePalette();
+    });
+  }
+
+  updatePalette();
+  if (window.MathJax) MathJax.typesetPromise();
+}
+
+function navigateQuestion(dir) {
+  updateQuestionView(currentQIndex + dir);
+}
+
+function updatePalette() {
+  const grid = document.getElementById('palette-grid');
+  if (!grid || !currentQuestions) return;
+
+  let answered = 0;
+  grid.innerHTML = currentQuestions.map((q, idx) => {
+    const isCurrent  = idx === currentQIndex;
+    const isAnswered = !!q.userAnswer;
+    if (isAnswered) answered++;
+    const cls = isCurrent ? 'current' : isAnswered ? 'answered' : '';
+    return `<button onclick="updateQuestionView(${idx})" class="palette-btn ${cls}">${idx + 1}</button>`;
+  }).join('');
+
+  document.getElementById('answered-count').textContent = `${answered}/${currentQuestions.length}`;
+}
+
+let activeOCRQuestionId = null;
+
+function triggerStudentOCR(qId) {
+  activeOCRQuestionId = qId;
+  document.getElementById('ocr-answer-file').click();
+}
+
+async function processStudentAnswerOCR(input) {
+  const file = input.files?.[0];
+  if (!file || !activeOCRQuestionId) return;
+
+  Toast.info('Scanning handwritten answer with pytesseract OCR…');
+  try {
+    const res  = await api.ocrImage(file);
+    const text = (res.text || '').trim();
+    if (!text) { Toast.warning('No legible text recognized in photo.'); return; }
+
+    const ta = document.getElementById(`q${activeOCRQuestionId}`);
+    if (ta) {
+      ta.value = (ta.value ? ta.value + '\n\n' : '') + text;
+      const q = currentQuestions.find(x => x._id === activeOCRQuestionId);
+      if (q) { q.userAnswer = ta.value; updatePalette(); }
+      submitAnswerToServer(currentExam._id, activeOCRQuestionId, ta.value);
+    }
+    Toast.success('OCR text added to your answer!');
+  } catch (err) {
+    Toast.error('OCR failed: ' + err.message);
+  } finally {
+    input.value = '';
+  }
+}
+
+function confirmSubmitExam() {
+  if (confirm('Are you sure you want to submit your exam now?')) {
+    submitExam(true);
+  }
+}
+</script>
 </body>
 </html>

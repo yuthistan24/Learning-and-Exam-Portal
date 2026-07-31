@@ -46,7 +46,7 @@ exports.getStudentStats = async (req, res) => {
 
     const averagePercentage = totalMarks > 0 ? (totalScore / totalMarks) * 100 : 0;
 
-    const courseProgress = (user.courseProgress || []).map(progress => {
+    const courseProgress = (user.courseProgress || []).filter(p => p.courseId).map(progress => {
       const course = progress.courseId;
       const lessonCount = Math.max(course?.lessons?.length || course?.units?.length || 1, 1);
       return {

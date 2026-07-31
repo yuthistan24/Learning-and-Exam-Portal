@@ -17,8 +17,9 @@ const resultRoutes = require('./routes/results');
 const adminRoutes = require('./routes/admin');
 const pdfRoutes = require('./routes/pdf');
 const courseRoutes = require('./routes/courses');
-const statsRoutes = require('./routes/stats');
-const chatRoutes = require('./routes/chat');
+const statsRoutes    = require('./routes/stats');
+const chatRoutes     = require('./routes/chat');
+const evaluationRoutes = require('./routes/evaluation');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -87,8 +88,9 @@ app.use('/api/results', resultRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/courses', courseRoutes);
-app.use('/api/stats', statsRoutes);
-app.use('/api/chat', chatRoutes);
+app.use('/api/stats',      statsRoutes);
+app.use('/api/chat',       chatRoutes);
+app.use('/api/evaluation', evaluationRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -21,4 +21,7 @@ router.get('/exam/:examId', authenticateToken, answerController.getExamAnswers);
 // Run code (student testing)
 router.post('/run-code', authenticateToken, answerController.runCode);
 
+// Evaluate practice text
+router.post('/evaluate-practice', authenticateToken, answerController.evaluatePractice);
+
 module.exports = router;

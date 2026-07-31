@@ -1,0 +1,15 @@
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+.env
+uploads/
+backend/uploads/
+.claude/
+.gemini/
+.venv/
+__pycache__/
+*.pyc
+syllabus.pdf
+syllabus_text.txt
+syllabus_full_text.txt
+.DS_Store

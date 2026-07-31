@@ -314,13 +314,23 @@ exports.getExamAnalytics = async (req, res) => {
       else distribution[4]++;
     });
 
-    // Question-wise Performance
+    // Question-wise Performance (Optimized via Aggregation)
+    const aggregatedStats = await Result.aggregate([
+      { $match: { examId: exam._id } },
+      { $unwind: "$answers" },
+      { $group: {
+          _id: "$answers.questionId",
+          avgScore: { $avg: "$answers.score" }
+        }
+      }
+    ]);
+    
+    const statsMap = {};
+    aggregatedStats.forEach(s => { statsMap[s._id.toString()] = s.avgScore; });
+
     const questions = await Question.find({ examId: exam._id }).select('text marks type');
     const questionStats = questions.map(q => {
-      const answers = results.flatMap(r => r.answers || []).filter(a => a.questionId.toString() === q._id.toString());
-      const qAvgScore = answers.length > 0
-        ? answers.reduce((sum, a) => sum + (a.score || 0), 0) / answers.length
-        : 0;
+      const qAvgScore = statsMap[q._id.toString()] || 0;
       const qSuccessRate = q.marks > 0 ? (qAvgScore / q.marks) * 100 : 0;
       
       return {

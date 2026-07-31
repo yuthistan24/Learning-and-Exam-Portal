@@ -3,6 +3,8 @@ const Course = require('./src/models/Course');
 const Question = require('./src/models/Question');
 const User = require('./src/models/User');
 const syllabusData = require('./src/data/r2024CseSyllabus');
+const practiceData = require('./src/data/practiceQuestions');
+const topicExplanations = require('./src/data/topicExplanations');
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -20,6 +22,7 @@ const getLanguageForCourse = (courseTitle, courseCode) => {
 
 const generateLessonContent = (topic, unitNumber, courseTitle, courseCode) => {
   const lang = getLanguageForCourse(courseTitle, courseCode);
+  const explanation = topicExplanations[topic] || topicExplanations[topic.split(' (')[0]]; // Handle titles with parentheses
   let codingStarter = null;
   
   if (lang === 'python') {
@@ -35,20 +38,22 @@ const generateLessonContent = (topic, unitNumber, courseTitle, courseCode) => {
   return {
     unitNumber,
     topic,
-    summary: `Step-by-step guide to ${topic}. In this lesson, we will explore the core principles and implementation details.`,
+    summary: explanation ? explanation.summary : 
+      `In this lesson, we will explore **${topic}**. This is an important concept in ${courseTitle} that helps you build better software and solve complex problems.\n\n` +
+      `We will look at how it works, why it is useful, and how you can implement it in your own projects. Follow the key points below and try the practice exercise to master this topic!`,
     objectives: [
-      `Master the basic syntax and logic of ${topic}`,
-      `Understand how ${topic} fits into the larger architecture`,
-      `Implement ${topic} in a real-world scenario`
+      `Understand the core concepts of ${topic}`,
+      `Learn how to apply ${topic} in practical scenarios`,
+      `Gain confidence in using ${topic} within the context of ${courseTitle}`
     ],
-    keyPoints: [
-      `${topic} is fundamental to this unit.`,
-      `Follow the steps carefully to ensure correct implementation.`,
-      `Practice makes perfect: try the interactive code snippet below.`
+    keyPoints: explanation ? explanation.keyPoints : [
+      `${topic} is a key building block for this unit.`,
+      `Understanding ${topic} will help you write more efficient code.`,
+      `Practical practice is the best way to learn this concept.`
     ],
-    activity: `Complete the practice problem for ${topic} using the embedded editor.`,
+    activity: `Complete the practice problem for ${topic} using the interactive editor.`,
     codingStarter,
-    estimatedMinutes: 30
+    estimatedMinutes: 25
   };
 };
 
@@ -178,14 +183,52 @@ const seed = async () => {
         }).save();
 
         for (const topic of unit.topics) {
-          // Topic-level Practice
           const isCoding = getLanguageForCourse(course.title, course.code) !== null;
+          
+          // Question 1: Concept
           await new Question({
-            text: `[Practice] ${isCoding ? 'Implement' : 'Describe'} the solution for ${topic}.`,
-            type: isCoding ? 'programming' : 'short_answer',
+            text: `[Concept Practice] Explain the theoretical foundations of ${topic}. What are its primary use cases?`,
+            type: 'short_answer',
             category: 'practice',
             marks: 5,
-            rubric: isCoding ? { method: 'programming', testCases: [{ input: '', expectedOutput: '', weight: 1 }] } : { method: 'keyword', keywords: [topic.toLowerCase()], answerKey: `Practice answer for ${topic}` },
+            rubric: { method: 'keyword', keywords: [topic.toLowerCase()], answerKey: `Comprehensive explanation of ${topic}.` },
+            courseId: course._id,
+            unit: `Unit ${unit.number}`,
+            topic
+          }).save();
+
+          // Question 2: Analytical
+          await new Question({
+            text: `[Analytical Practice] Analyze the performance, constraints, or mathematical properties of ${topic}. Provide a detailed breakdown.`,
+            type: 'short_answer',
+            category: 'practice',
+            marks: 5,
+            rubric: { method: 'keyword', keywords: ['performance', 'constraints', topic.toLowerCase()], answerKey: `Analysis of ${topic}.` },
+            courseId: course._id,
+            unit: `Unit ${unit.number}`,
+            topic
+          }).save();
+
+          // Question 3: Implementation
+          let implText = `[Implementation Practice] ${isCoding ? 'Write the code to implement' : 'Provide a step-by-step procedure/algorithm for'} ${topic}.`;
+          let rubric = isCoding ? { method: 'programming', testCases: [{ input: 'test_input', expectedOutput: 'test_output', weight: 1 }] } : { method: 'keyword', keywords: ['step', topic.toLowerCase()], answerKey: `Implementation details for ${topic}.` };
+          
+          if (practiceData[topic]) {
+              const pData = practiceData[topic];
+              implText = pData.text;
+              if (pData.testCases) {
+                  rubric = { method: 'programming', testCases: pData.testCases };
+              } else if (pData.answerKey) {
+                  rubric = { method: 'keyword', keywords: [topic.toLowerCase()], answerKey: pData.answerKey };
+              }
+          }
+
+          await new Question({
+            text: implText,
+            type: (isCoding || (practiceData[topic] && practiceData[topic].testCases)) ? 'programming' : 'short_answer',
+            category: 'practice',
+            marks: 10,
+            rubric: rubric,
             courseId: course._id,
             unit: `Unit ${unit.number}`,
             topic

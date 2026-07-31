@@ -1,143 +1,346 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up - Global Exams & Learning</title>
-    <link rel="stylesheet" href="src/css/style.css">
-    <link rel="stylesheet" href="src/css/enhanced-style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — Global Exams</title>
+  <meta name="description" content="Create your free Global Exams account to take AI-evaluated examinations.">
+  <link rel="stylesheet" href="src/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body { overflow-x: hidden; }
+    .auth-layout {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* Brand Side — mirrored from login */
+    .brand-side {
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 3rem;
+      position: relative; overflow: hidden;
+    }
+    .brand-side::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 70% 30%, hsla(270, 65%, 60%, 0.1) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 30% 70%, hsla(230, 70%, 55%, 0.08) 0%, transparent 60%);
+    }
+    .brand-content { position: relative; z-index: 1; text-align: center; max-width: 400px; }
+    .brand-logo {
+      font-family: var(--font-display); font-size: 2rem; font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1.5rem;
+      display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+    }
+    .brand-logo i { -webkit-text-fill-color: hsl(270, 75%, 75%); font-size: 2rem; }
+    .brand-tagline { font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; }
+    .brand-sub { color: var(--text-secondary); line-height: 1.7; font-size: 0.95rem; }
+
+    .role-picker {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.5rem; margin-bottom: 1.5rem;
+    }
+    .role-pick-btn {
+      padding: 0.875rem;
+      border: 2px solid var(--border);
+      background: var(--bg-overlay);
+      border-radius: var(--radius-lg);
+      cursor: pointer; text-align: center;
+      transition: all var(--transition-fast);
+      font-family: var(--font-sans);
+    }
+    .role-pick-btn:hover { border-color: var(--accent-primary); }
+    .role-pick-btn.selected {
+      border-color: var(--accent-primary);
+      background: hsla(230, 70%, 55%, 0.1);
+    }
+    .role-pick-btn .role-icon { font-size: 1.5rem; margin-bottom: 0.35rem; }
+    .role-pick-btn .role-label { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
+    .role-pick-btn.selected .role-label { color: var(--text-primary); }
+
+    .form-side {
+      display: flex; align-items: center; justify-content: center;
+      padding: 3rem 3rem;
+      overflow-y: auto;
+    }
+    .form-box { width: 100%; max-width: 420px; }
+    .form-box h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+    .form-box .subtitle { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 2rem; }
+
+    .error-box {
+      background: hsla(0, 70%, 55%, 0.1); border: 1px solid hsla(0, 70%, 55%, 0.25);
+      color: hsl(0, 70%, 70%); padding: 0.75rem 1rem;
+      border-radius: var(--radius-md); font-size: 0.875rem;
+      margin-bottom: 1rem; display: none;
+    }
+
+    .nav-links {
+      display: flex; align-items: center; gap: 1rem;
+      position: absolute; top: 1.5rem; right: 2rem;
+    }
+
+    .success-box {
+      text-align: center; padding: 2rem;
+    }
+    .success-icon {
+      width: 72px; height: 72px;
+      background: hsla(145, 65%, 42%, 0.15);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; color: var(--success);
+      margin: 0 auto 1.25rem;
+    }
+
+    @media (max-width: 900px) {
+      .auth-layout { grid-template-columns: 1fr; }
+      .brand-side { display: none; }
+    }
+  </style>
 </head>
 <body>
-    <div class="bg-mesh"></div>
+<div class="bg-mesh"></div>
+<div id="toast-container"></div>
 
-    <nav class="navbar">
-        <div class="navbar-container">
-            <div class="navbar-brand">Global Exams</div>
-            <ul class="navbar-menu">
-                <li>
-                    <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle Light/Dark Mode">
-                        <i class="fas fa-sun"></i>
-                    </button>
-                </li>
-                <li><a href="login.html">Login</a></li>
-            </ul>
+<!-- Top-right nav -->
+<div class="nav-links">
+  <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle theme">
+    <i class="fas fa-sun"></i>
+  </button>
+  <a href="login.html" class="btn btn-ghost btn-sm"><i class="fas fa-sign-in-alt"></i> Sign In</a>
+  <a href="index.html" class="btn btn-ghost btn-sm"><i class="fas fa-home"></i> Home</a>
+</div>
+
+<div class="auth-layout">
+  <!-- Brand side -->
+  <div class="brand-side">
+    <div class="brand-content animate-in">
+      <div class="brand-logo">
+        <i class="fas fa-graduation-cap"></i> Global Exams
+      </div>
+      <h2 class="brand-tagline">Your learning journey starts here.</h2>
+      <p class="brand-sub">
+        Join thousands of students and educators using AI-powered evaluations,
+        live code execution, and smart progress tracking.
+      </p>
+
+      <div style="margin-top:2.5rem; display:flex; flex-direction:column; gap:1rem; text-align:left; width:100%">
+        <div style="display:flex; align-items:flex-start; gap:1rem">
+          <div style="width:36px; height:36px; border-radius:10px; background:hsla(230,70%,55%,0.12);
+                      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+                      color:hsl(230,80%,72%); font-size:0.9rem">
+            <i class="fas fa-bolt"></i>
+          </div>
+          <div>
+            <div style="font-weight:600; font-size:0.9rem">AI-Powered Grading</div>
+            <div style="font-size:0.8rem; color:var(--text-secondary)">Subject-specific local models evaluate your answers instantly.</div>
+          </div>
         </div>
-    </nav>
+        <div style="display:flex; align-items:flex-start; gap:1rem">
+          <div style="width:36px; height:36px; border-radius:10px; background:hsla(145,65%,42%,0.12);
+                      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+                      color:hsl(145,55%,58%); font-size:0.9rem">
+            <i class="fas fa-code"></i>
+          </div>
+          <div>
+            <div style="font-weight:600; font-size:0.9rem">Live Code Execution</div>
+            <div style="font-size:0.8rem; color:var(--text-secondary)">Run code in Python, Java, C, C++ with instant feedback.</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:flex-start; gap:1rem">
+          <div style="width:36px; height:36px; border-radius:10px; background:hsla(35,90%,52%,0.12);
+                      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+                      color:hsl(35,80%,65%); font-size:0.9rem">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <div>
+            <div style="font-weight:600; font-size:0.9rem">Progress Analytics</div>
+            <div style="font-size:0.8rem; color:var(--text-secondary)">Track completion, mastery, and detailed score breakdowns.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <main class="container auth-wrapper">
-        <div class="glass-card auth-box">
-            <h2>Create Account</h2>
-            <p class="subtitle">Join the next generation of learning.</p>
-            
-            <form onsubmit="handleRegisterSubmit(event)">
-                <div class="form-group">
-                    <label for="name">Full Name</label>
-                    <input type="text" id="name" required placeholder="John Doe" autocomplete="name">
-                </div>
-                <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input type="email" id="email" required placeholder="you@university.edu" autocomplete="email">
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" required placeholder="••••••••" autocomplete="new-password">
-                    <small style="color: var(--text-secondary); margin-top: 0.25rem; display: block;">
-                        Min 8 characters, include uppercase, lowercase, number
-                    </small>
-                </div>
-                <div class="form-group">
-                    <label for="confirmPassword">Confirm Password</label>
-                    <input type="password" id="confirmPassword" required placeholder="••••••••" autocomplete="new-password">
-                </div>
-                <div class="form-group">
-                    <label for="role">Select Role</label>
-                    <select id="role" required>
-                        <option value="student">Student</option>
-                    </select>
-                    <small style="color: var(--text-secondary); margin-top: 0.25rem; display: block;">
-                        Teacher and admin accounts are created by administrators.
-                    </small>
-                </div>
+  <!-- Form side -->
+  <div class="form-side">
+    <div class="form-box animate-in">
 
-                <div id="error-msg" style="display:none; background:rgba(239,68,68,0.15); border:1px solid #EF4444; color:#EF4444; padding:0.75rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:0.9rem;"></div>
+      <!-- Success state -->
+      <div id="success-box" style="display:none" class="success-box">
+        <div class="success-icon"><i class="fas fa-check"></i></div>
+        <h2 style="margin-bottom:0.5rem">Account Created!</h2>
+        <p style="color:var(--text-secondary); margin-bottom:1.5rem">
+          Your account has been set up. Redirecting to dashboard…
+        </p>
+        <div class="spinner" style="margin:0 auto"></div>
+      </div>
 
-                <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%;">Create Account</button>
-            </form>
+      <!-- Registration form -->
+      <div id="form-section">
+        <h1>Create Account</h1>
+        <p class="subtitle">Sign up for free — no credit card required.</p>
 
-            <div class="auth-link">
-                Already have an account? <a href="login.html">Log in</a>
+        <!-- Role picker -->
+        <div style="margin-bottom:1.5rem">
+          <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;
+                      color:var(--text-secondary);margin-bottom:0.75rem">I am a…</div>
+          <div class="role-picker">
+            <button type="button" class="role-pick-btn selected" id="role-student" onclick="selectRole('student')">
+              <div class="role-icon">🎓</div>
+              <div class="role-label">Student</div>
+            </button>
+            <button type="button" class="role-pick-btn" id="role-teacher" onclick="selectRole('teacher')">
+              <div class="role-icon">👨‍🏫</div>
+              <div class="role-label">Teacher</div>
+            </button>
+          </div>
+        </div>
+
+        <div id="error-box" class="error-box" role="alert"></div>
+
+        <form id="signup-form" onsubmit="handleSignup(event)" novalidate>
+          <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" required
+                   placeholder="Jane Smith"
+                   autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" required
+                   placeholder="jane@university.edu"
+                   autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div style="position:relative">
+              <input type="password" id="password" required
+                     placeholder="Minimum 8 characters"
+                     minlength="8"
+                     autocomplete="new-password"
+                     style="padding-right:2.75rem"
+                     oninput="checkPwdStrength(this.value)">
+              <button type="button" onclick="togglePwd('password','eye1')"
+                      style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);
+                             background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:0.875rem">
+                <i class="fas fa-eye" id="eye1"></i>
+              </button>
             </div>
+            <!-- Password strength bar -->
+            <div style="height:3px;background:var(--bg-overlay);border-radius:2px;margin-top:0.25rem">
+              <div id="pwd-strength-bar" style="height:100%;width:0;border-radius:2px;transition:all 0.3s"></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="confirm-password">Confirm Password</label>
+            <div style="position:relative">
+              <input type="password" id="confirm-password" required
+                     placeholder="Repeat your password"
+                     style="padding-right:2.75rem"
+                     autocomplete="new-password">
+              <button type="button" onclick="togglePwd('confirm-password','eye2')"
+                      style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);
+                             background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:0.875rem">
+                <i class="fas fa-eye" id="eye2"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="submit-btn" class="btn btn-primary btn-full btn-lg" style="margin-top:0.25rem">
+            <i class="fas fa-user-plus"></i>
+            <span id="btn-text">Create Account</span>
+          </button>
+        </form>
+
+        <div style="text-align:center; margin-top:1.5rem; font-size:0.875rem; color:var(--text-secondary)">
+          Already have an account?
+          <a href="login.html" style="color:hsl(230,80%,72%); text-decoration:none; font-weight:600">Sign in</a>
         </div>
-    </main>
+      </div>
+    </div>
+  </div>
+</div>
 
-    <script src="src/js/api.legacy.js"></script>
-    <script>
-        const api = new APIClient();
+<script src="src/js/api.legacy.js"></script>
+<script>
+  let selectedRole = 'student';
 
-        function showError(msg) {
-            const el = document.getElementById('error-msg');
-            el.textContent = msg;
-            el.style.display = 'block';
-        }
+  function selectRole(role) {
+    selectedRole = role;
+    ['student','teacher'].forEach(r => {
+      document.getElementById(`role-${r}`).classList.toggle('selected', r === role);
+    });
+  }
 
-        function hideError() {
-            document.getElementById('error-msg').style.display = 'none';
-        }
+  function togglePwd(inputId, iconId) {
+    const inp = document.getElementById(inputId);
+    const eye = document.getElementById(iconId);
+    if (inp.type === 'password') { inp.type = 'text'; eye.className = 'fas fa-eye-slash'; }
+    else { inp.type = 'password'; eye.className = 'fas fa-eye'; }
+  }
 
-        function validatePassword(pwd) {
-            if (pwd.length < 8) return 'Password must be at least 8 characters';
-            if (!/[A-Z]/.test(pwd)) return 'Password must contain uppercase letter';
-            if (!/[a-z]/.test(pwd)) return 'Password must contain lowercase letter';
-            if (!/[0-9]/.test(pwd)) return 'Password must contain a number';
-            return null;
-        }
+  function checkPwdStrength(val) {
+    const bar = document.getElementById('pwd-strength-bar');
+    let strength = 0;
+    if (val.length >= 8) strength++;
+    if (/[A-Z]/.test(val)) strength++;
+    if (/[0-9]/.test(val)) strength++;
+    if (/[^A-Za-z0-9]/.test(val)) strength++;
+    const w = (strength / 4 * 100).toFixed(0);
+    const colors = ['var(--danger)', 'var(--warning)', 'hsl(80,70%,55%)', 'var(--success)'];
+    bar.style.width = w + '%';
+    bar.style.background = colors[Math.max(0, strength - 1)];
+  }
 
-        async function handleRegisterSubmit(event) {
-            event.preventDefault();
-            hideError();
+  function showError(msg) {
+    const box = document.getElementById('error-box');
+    box.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${msg}`;
+    box.style.display = 'block';
+  }
+  function clearError() { document.getElementById('error-box').style.display = 'none'; }
 
-            const name = document.getElementById('name').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const role = document.getElementById('role').value;
-            const btn = document.getElementById('submit-btn');
+  async function handleSignup(e) {
+    e.preventDefault();
+    clearError();
 
-            // Validation
-            if (!name || !email || !password || !confirmPassword || !role) {
-                showError('All fields are required');
-                return;
-            }
+    const name     = document.getElementById('name').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm  = document.getElementById('confirm-password').value;
+    const btn      = document.getElementById('submit-btn');
 
-            const pwdError = validatePassword(password);
-            if (pwdError) {
-                showError(pwdError);
-                return;
-            }
+    if (!name || !email || !password) { showError('Please fill in all fields.'); return; }
+    if (password.length < 8) { showError('Password must be at least 8 characters.'); return; }
+    if (password !== confirm) { showError('Passwords do not match.'); return; }
 
-            if (password !== confirmPassword) {
-                showError('Passwords do not match');
-                return;
-            }
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Creating account…';
 
-            try {
-                btn.textContent = 'Creating Account...';
-                btn.disabled = true;
-                await api.register(email, password, name, role);
-                window.location.href = 'dashboard.html';
-            } catch (error) {
-                showError('Registration failed: ' + (error.message || 'Could not connect to server'));
-                btn.textContent = 'Create Account';
-                btn.disabled = false;
-            }
-        }
+    try {
+      await api.register(email, password, name, selectedRole);
+      // Show success
+      document.getElementById('form-section').style.display = 'none';
+      document.getElementById('success-box').style.display = 'block';
+      Toast.success('Account created! Welcome!');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 1800);
+    } catch (err) {
+      showError(err.message || 'Registration failed. Try a different email.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-user-plus"></i> <span id="btn-text">Create Account</span>';
+    }
+  }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem('token')) {
-                window.location.href = 'dashboard.html';
-            }
-        });
-    </script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('token')) window.location.href = 'dashboard.html';
+  });
+</script>
 </body>
 </html>

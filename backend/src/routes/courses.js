@@ -31,6 +31,34 @@ router.get('/', authenticateToken, async (req, res) => {
       ];
     }
 
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (user.role === 'student') {
+      query._id = { $in: user.enrolledCourses || [] };
+    } else if (user.role === 'teacher' && user.department) {
+      const deptStr = user.department.toUpperCase();
+      let regexStr = null;
+      if (deptStr === 'CSE') regexStr = 'CS';
+      else if (deptStr === 'MATHS') regexStr = 'MA|MN';
+      else if (deptStr === 'PHYSICS') regexStr = 'PH';
+      else if (deptStr === 'CHEMISTRY') regexStr = 'CY';
+      else if (deptStr === 'ENGLISH') regexStr = 'EG';
+
+      if (regexStr) {
+        if (query.$or) {
+          const existingOr = query.$or;
+          delete query.$or;
+          query.$and = [
+            { $or: existingOr },
+            { code: { $regex: regexStr, $options: 'i' } }
+          ];
+        } else {
+          query.code = { $regex: regexStr, $options: 'i' };
+        }
+      }
+    }
+
     const courses = await Course.find(query).sort({ semester: 1, code: 1 });
     res.json({ success: true, courses });
   } catch (error) {
@@ -42,7 +70,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/questions/:courseId/:topic', authenticateToken, async (req, res) => {
   try {
     const { courseId, topic } = req.params;
-    const { category = 'practice' } = req.query;
+    const { category = 'practice', difficulty } = req.query;
     if (!isObjectId(courseId)) {
       return res.status(400).json({ success: false, message: 'Invalid course id' });
     }
@@ -52,8 +80,18 @@ router.get('/questions/:courseId/:topic', authenticateToken, async (req, res) =>
       category,
       ...topicMatches(topic)
     };
+    
+    if (difficulty) {
+       query.difficulty = Number(difficulty);
+    }
 
-    const questions = await Question.find(query).limit(12);
+    let questions = await Question.find(query).limit(12);
+    
+    // Adaptive fallback: if no questions found at this difficulty, fetch any
+    if (questions.length === 0 && difficulty) {
+        delete query.difficulty;
+        questions = await Question.find(query).limit(12);
+    }
 
     const safeQuestions = questions.map(question => {
       const q = question.toObject();
@@ -152,6 +190,35 @@ router.post('/:id/progress', authenticateToken, async (req, res) => {
       completedUnits: progress.completedUnits,
       score: progress.score
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Log time spent on a lesson/topic.
+router.post('/:id/time', authenticateToken, async (req, res) => {
+  try {
+    const { unitKey, timeSpentSeconds } = req.body;
+    if (!isObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid course id' });
+    }
+    if (!unitKey) {
+      return res.status(400).json({ success: false, message: 'unitKey is required' });
+    }
+    
+    const user = await User.findById(req.user.userId);
+    let progress = user.courseProgress.find(item => item.courseId?.toString() === req.params.id);
+    if (!progress) {
+      user.courseProgress.push({ courseId: req.params.id, completedUnits: [], score: 0, timeSpentPerUnit: {} });
+      progress = user.courseProgress[user.courseProgress.length - 1];
+    }
+    
+    if (!progress.timeSpentPerUnit) progress.timeSpentPerUnit = new Map();
+    const current = progress.timeSpentPerUnit.get(unitKey) || 0;
+    progress.timeSpentPerUnit.set(unitKey, current + (timeSpentSeconds || 0));
+    
+    await user.save();
+    res.json({ success: true, timeSpentSeconds: progress.timeSpentPerUnit.get(unitKey) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
