@@ -146,12 +146,11 @@ async function startExam(examId) {
         }
 
         // Load exam title and questions
-        const titleEl = document.getElementById('exam-title');
-        if (titleEl) titleEl.textContent = response.title || 'Exam';
+        document.getElementById('exam-title').textContent = response.title;
         loadQuestions(examId);
         startTimer();
     } catch (error) {
-        alert('Failed to start exam: ' + (error.message || error));
+        alert('Failed to start exam: ' + error.message);
     }
 }
 
@@ -160,7 +159,6 @@ async function loadQuestions(examId) {
         const response = await api.getQuestions(examId);
         currentQuestions = Array.isArray(response) ? response : [];
         const container = document.getElementById('questions-container');
-        if (!container) return;
         
         container.innerHTML = '';
         currentQuestions.forEach((question, index) => {

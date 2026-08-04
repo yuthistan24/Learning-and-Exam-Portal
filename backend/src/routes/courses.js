@@ -165,7 +165,7 @@ router.post('/:id/progress', authenticateToken, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    if (!user.enrolledCourses.some(id => (id?._id ? id._id.toString() : id?.toString()) === course._id.toString())) {
+    if (!user.enrolledCourses.some(id => id.toString() === course._id.toString())) {
       user.enrolledCourses.push(course._id);
     }
 

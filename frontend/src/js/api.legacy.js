@@ -62,34 +62,21 @@ class APIClient {
   // ── Theme ─────────────────────────────────────────────────────
   initTheme() {
     const theme = localStorage.getItem('theme') || 'dark';
-    this._applyTheme(theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    this._updateThemeIcon(theme);
   }
 
   toggleTheme() {
     const current = localStorage.getItem('theme') || 'dark';
     const next    = current === 'dark' ? 'light' : 'dark';
     localStorage.setItem('theme', next);
-    this._applyTheme(next);
-  }
-
-  _applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    if (document.body) {
-      document.body.classList.toggle('light', theme === 'light');
-      document.body.classList.toggle('dark', theme === 'dark');
-    }
-    this._updateThemeIcon(theme);
+    document.documentElement.setAttribute('data-theme', next);
+    this._updateThemeIcon(next);
   }
 
   _updateThemeIcon(theme) {
-    const icons = document.querySelectorAll('.theme-toggle i');
-    icons.forEach(icon => {
-      icon.className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
-    });
-    const toggles = document.querySelectorAll('.theme-toggle');
-    toggles.forEach(toggle => {
-      toggle.setAttribute('title', theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode');
-    });
+    const icon = document.querySelector('.theme-toggle i');
+    if (icon) icon.className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
   }
 
   // ── Core request ──────────────────────────────────────────────
@@ -307,10 +294,3 @@ window.relativeTime   = relativeTime;
 
 // Create singleton
 window.api = new APIClient();
-
-// Re-apply theme on DOMContentLoaded to guarantee document.body is present
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => window.api.initTheme());
-} else {
-  window.api.initTheme();
-}

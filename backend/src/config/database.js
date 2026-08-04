@@ -3,21 +3,17 @@ const { logger } = require('../utils/logger');
 
 const connectDB = async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/global-exams';
-    const isCloud = mongoUri.includes('mongodb+srv://') || mongoUri.includes('mongodb.net');
-    const safeUriLog = mongoUri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@');
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/global-exams';
     
-    await mongoose.connect(mongoUri);
+    await mongoose.connect(mongoUri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
 
-    logger.info(`MongoDB connected [${isCloud ? 'CLOUD (Atlas)' : 'LOCAL'}]: ${safeUriLog}`);
+    logger.info(`MongoDB connected: ${mongoUri}`);
     return mongoose.connection;
   } catch (error) {
-    logger.error('MongoDB connection error:', error.message);
-    if (process.env.MONGODB_URI && process.env.MONGODB_URI.includes('mongodb+srv://')) {
-      logger.error('Tip: Make sure your IP address is whitelisted in MongoDB Atlas Network Access.');
-    } else {
-      logger.error('Tip: Ensure your local MongoDB service is running (e.g. net start MongoDB or mongod).');
-    }
+    logger.error('MongoDB connection error:', error);
     throw error;
   }
 };

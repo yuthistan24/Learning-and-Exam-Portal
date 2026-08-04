@@ -5,13 +5,9 @@ const Question = require('../models/Question');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 
-const canManageExam = (req, exam) => {
-  if (!exam) return false;
-  if (req.user.role === 'admin') return true;
-  if (!exam.createdBy) return false;
-  const creatorId = exam.createdBy._id ? exam.createdBy._id.toString() : exam.createdBy.toString();
-  return creatorId === req.user.userId;
-};
+const canManageExam = (req, exam) => (
+  req.user.role === 'admin' || exam.createdBy.toString() === req.user.userId
+);
 
 // Submit/save answer
 exports.submitAnswer = async (req, res) => {
@@ -34,16 +30,17 @@ exports.submitAnswer = async (req, res) => {
     if (!question) {
       throw new AppError('Question not found', 404);
     }
-    const qExamId = question.examId?._id ? question.examId._id.toString() : question.examId?.toString();
-    if (!qExamId || qExamId !== examId) {
+    if (!question.examId || question.examId.toString() !== examId) {
       throw new AppError('Question does not belong to this exam', 400);
     }
 
     // Auto-enroll student on first answer if not enrolled
-    if (!exam.enrolledStudents.some(id => (id?._id ? id._id.toString() : id?.toString()) === studentId)) {
+    if (!exam.enrolledStudents.some(id => id.toString() === studentId)) {
       exam.enrolledStudents.push(studentId);
       await exam.save();
     }
+
+    // Check if exam is active
     if (exam.status !== 'active') {
       throw new AppError('Exam is not active', 400);
     }
