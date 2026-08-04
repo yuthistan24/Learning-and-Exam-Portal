@@ -2,7 +2,7 @@
 
 import os
 import subprocess
-from langchain.llms import Ollama
+from langchain_community.llms import Ollama
 from langchain.agents import initialize_agent, Tool
 
 # --- File system tools ---
@@ -66,7 +66,7 @@ agent = initialize_agent(
 # --- Example usage ---
 if __name__ == "__main__":
     while True:
-    user_input = input("Ask the agent: ")
-    if user_input.lower() in ["quit", "exit"]:
-        break
-    print(agent.run(user_input))
+        user_input = input("Ask the agent: ")
+        if user_input.lower() in ["quit", "exit"]:
+            break
+        print(agent.run(user_input))
