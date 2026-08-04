@@ -1,14 +1,14 @@
 const express = require('express');
 const router  = express.Router();
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const resultController = require('../controllers/resultController');
 
 // Re-evaluate a student's exam result using AI
 // POST /api/evaluation/:examId/re-evaluate/:studentId
 router.post(
   '/:examId/re-evaluate/:studentId',
-  authenticate,
-  authorize('teacher', 'admin'),
+  authenticateToken,
+  authorizeRole('teacher', 'admin'),
   resultController.reEvaluate
 );
 
@@ -16,8 +16,8 @@ router.post(
 // PATCH /api/evaluation/:examId/override/:studentId/:questionId
 router.patch(
   '/:examId/override/:studentId/:questionId',
-  authenticate,
-  authorize('teacher', 'admin'),
+  authenticateToken,
+  authorizeRole('teacher', 'admin'),
   resultController.overrideScore
 );
 
@@ -25,8 +25,8 @@ router.patch(
 // GET /api/evaluation/:examId/status
 router.get(
   '/:examId/status',
-  authenticate,
-  authorize('teacher', 'admin'),
+  authenticateToken,
+  authorizeRole('teacher', 'admin'),
   async (req, res) => {
     try {
       const Result = require('../models/Result');
