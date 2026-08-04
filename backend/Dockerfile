@@ -1,18 +1,20 @@
-FROM node:18-alpine
+# ── Node.js Backend Dockerfile ──
+FROM node:20-alpine AS base
 
 WORKDIR /app
 
-# Copy package files
+# Copy dependency definitions
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --omit=dev
+# Install production dependencies
+RUN npm ci --only=production
 
-# Copy source code and seeders
+# Copy application source code
 COPY . .
 
-# Expose port
 EXPOSE 5000
 
-# Start application
-CMD ["node", "server.js"]
+ENV PORT=5000
+ENV NODE_ENV=production
+
+CMD ["npm", "start"]

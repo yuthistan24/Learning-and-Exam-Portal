@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Exam — Global Exams</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    body { padding-top: var(--navbar-height); }
+    main { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+  </style>
+  <link rel="stylesheet" crossorigin href="/assets/style-B42aT28s.css">
+</head>
+<body>
+<div class="bg-mesh"></div>
+<div id="toast-container"></div>
+
+<nav class="navbar">
+  <div class="navbar-container">
+    <a href="dashboard.html" class="navbar-brand">
+      <i class="fas fa-graduation-cap"></i> Global Exams
+    </a>
+    <ul class="navbar-menu">
+      <li>
+        <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle theme">
+          <i class="fas fa-sun"></i>
+        </button>
+      </li>
+      <li><span id="user-display" style="color:var(--text-secondary);font-size:0.9rem">Loading…</span></li>
+      <li><a href="dashboard.html" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Dashboard</a></li>
+    </ul>
+  </div>
+</nav>
+
+    <main class="container" style="padding-top: 2rem;">
+        <div class="glass-card" style="margin-bottom: 1.5rem;">
+            <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
+                <div>
+                    <h1 style="margin:0;">Manage Exam</h1>
+                    <p style="margin:0.5rem 0 0;color:var(--text-secondary);" id="exam-meta">Loading…</p>
+                </div>
+                <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="window.location.href='exam-analytics.html?examId='+examId">View Analytics</button>
+                    <button class="btn btn-secondary" onclick="refreshAll()">Refresh</button>
+                    <button class="btn btn-primary" onclick="publishExam()" id="publish-btn" disabled>Publish</button>
+                </div>
+            </div>
+        </div>
+
+  <div style="display:grid;grid-template-columns: 1.15fr 0.85fr; gap: 1.5rem; align-items:start">
+    <section class="glass-card">
+      <h2 style="margin-top:0">Questions</h2>
+      <div id="questions-list" style="margin-top:1rem">
+        <div style="padding:1rem;color:var(--text-secondary)">Loading questions…</div>
+      </div>
+    </section>
+
+    <aside style="display:flex;flex-direction:column;gap:1.5rem">
+      <section class="glass-card">
+        <h2 style="margin-top:0">Add Question</h2>
+        <form onsubmit="handleAddQuestion(event)" id="add-question-form">
+          <div class="form-group">
+            <label>Type</label>
+            <select id="q-type" onchange="toggleMcqFields()" required>
+              <option value="mcq">Multiple Choice</option>
+              <option value="short_answer" selected>Short Answer</option>
+              <option value="long_answer">Long Answer</option>
+              <option value="math">Math</option>
+              <option value="programming">Programming</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Subject <span class="text-xs text-muted">(for AI routing)</span></label>
+            <select id="q-subject" required>
+              <option value="general">General</option>
+              <option value="coding">Coding / Programming</option>
+              <option value="math">Mathematics</option>
+              <option value="english">English</option>
+              <option value="science">Science</option>
+              <option value="history">History</option>
+              <option value="geography">Geography</option>
+              <option value="commerce">Commerce</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group">
+              <label>Marks</label>
+              <input type="number" id="q-marks" min="1" value="1" required />
+            </div>
+            <div class="form-group">
+              <label>Difficulty</label>
+              <select id="q-difficulty">
+                <option value="1">Beginner</option>
+                <option value="2" selected>Intermediate</option>
+                <option value="3">Expert</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Question Text</label>
+            <textarea id="q-text" rows="4" required placeholder="Enter the question…"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Unit</label>
+            <input type="text" id="q-unit" placeholder="Unit I, Unit II, …" />
+          </div>
+          <div class="form-group">
+            <label>Topic</label>
+            <input type="text" id="q-topic" placeholder="Stacks, Recursion, Sorting…" />
+          </div>
+          <div class="form-group" id="mcq-options-group" style="display:none">
+            <label>Options <span class="text-xs text-muted">(comma-separated)</span></label>
+            <input type="text" id="q-options" placeholder="Option A, Option B, Option C" />
+          </div>
+          <div class="form-group" id="mcq-correct-group" style="display:none">
+            <label>Correct option(s) <span class="text-xs text-muted">(comma-separated)</span></label>
+            <input type="text" id="q-correct" placeholder="Option A" />
+          </div>
+          <div class="form-group" id="testcases-group">
+            <label>Test Cases <span class="text-xs text-muted">(programming only: input =&gt; expected | weight)</span></label>
+            <textarea id="q-testcases" rows="3" class="code-textarea" placeholder="5 7 =&gt; 12 | 1.0"></textarea>
+          </div>
+          <div class="form-group" id="expected-group">
+            <label>Expected Answer / Answer Key</label>
+            <textarea id="q-expected" rows="3" placeholder="Model answer, key concepts, steps…"></textarea>
+          </div>
+          <button class="btn btn-primary btn-full" type="submit">
+            <i class="fas fa-plus"></i> Add Question
+          </button>
+        </form>
+      </section>
+
+      <!-- OCR Section -->
+      <section class="glass-card">
+        <h2 style="margin-top:0"><i class="fas fa-camera" style="color:var(--accent-primary)"></i> OCR Import</h2>
+        <p class="text-sm text-muted" style="margin-bottom:1rem">
+          Upload a PDF or image of a question paper. Text will be extracted automatically via OCR.
+        </p>
+        <!-- PDF upload -->
+        <div class="form-group">
+          <label>PDF File <span class="badge badge-blue">PyMuPDF</span></label>
+          <input type="file" id="pdf-file" accept="application/pdf" />
+        </div>
+        <!-- Image OCR upload -->
+        <div class="form-group">
+          <label>Image File <span class="badge badge-purple">pytesseract</span></label>
+          <input type="file" id="ocr-image-file" accept="image/*" />
+        </div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem">
+          <button class="btn btn-secondary btn-sm" onclick="uploadAndParsePDF()">
+            <i class="fas fa-file-pdf"></i> Parse PDF
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="uploadAndOCRImage()">
+            <i class="fas fa-image"></i> OCR Image
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="importParsedQuestions()" id="import-btn" disabled>
+            <i class="fas fa-upload"></i> Import Questions
+          </button>
+        </div>
+        <div id="import-status" class="text-sm text-muted" style="margin-top:0.75rem"></div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="edit-modal" onclick="closeEditModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:680px">
+    <div class="modal-header">
+      <h3>Edit Question</h3>
+      <button class="modal-close" onclick="closeEditModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <form onsubmit="handleUpdateQuestion(event)">
+      <input type="hidden" id="edit-id" />
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group">
+          <label>Marks</label>
+          <input type="number" id="edit-marks" min="1" required />
+        </div>
+        <div class="form-group">
+          <label>Subject</label>
+          <select id="edit-subject">
+            <option value="general">General</option>
+            <option value="coding">Coding</option>
+            <option value="math">Math</option>
+            <option value="english">English</option>
+            <option value="science">Science</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Question Text</label>
+        <textarea id="edit-text" rows="5" required></textarea>
+      </div>
+      <div class="form-group" id="edit-mcq-options-group" style="display:none">
+        <label>Options (comma-separated)</label>
+        <input type="text" id="edit-options" />
+      </div>
+      <div class="form-group" id="edit-mcq-correct-group" style="display:none">
+        <label>Correct option(s) (comma-separated)</label>
+        <input type="text" id="edit-correct" />
+      </div>
+      <div class="form-group" id="edit-expected-group">
+        <label>Expected Answer / Key</label>
+        <textarea id="edit-expected" rows="3"></textarea>
+      </div>
+      <div style="display:flex;gap:0.75rem;margin-top:0.5rem">
+        <button class="btn btn-primary" type="submit" style="flex:1"><i class="fas fa-save"></i> Save</button>
+        <button class="btn btn-secondary" type="button" onclick="closeEditModal()" style="flex:1">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="src/js/syllabus.legacy.js"></script>
+<script src="src/js/api.legacy.js"></script>
+    <script>
+        const api = new APIClient();
+        let examId = null;
+        let exam = null;
+        let parsedQuestions = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            examId = urlParams.get('id');
+            if (!examId) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+            if (!localStorage.getItem('token')) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const me = await api.getCurrentUser();
+                if (!['teacher', 'admin'].includes(me.user?.role)) {
+                    alert('Only teachers/admins can manage exams.');
+                    window.location.href = 'dashboard.html';
+                    return;
+                }
+
+                toggleMcqFields();
+                await refreshAll();
+            } catch (e) {
+                console.error(e);
+                logout();
+            }
+        });
+
+        async function refreshAll() {
+            await loadExam();
+            await loadQuestions();
+        }
+
+        async function loadExam() {
+            exam = await api.getExamById(examId);
+            const subject = exam.subject ? `• Subject: ${exam.subject}` : '';
+            document.getElementById('exam-meta').textContent =
+                `${exam.title} • Status: ${exam.status} ${subject}`;
+
+            const publishBtn = document.getElementById('publish-btn');
+            publishBtn.disabled = !(exam.status === 'draft');
+        }
+
+        async function loadQuestions() {
+            const list = document.getElementById('questions-list');
+            list.innerHTML = '<div style="padding: 1rem;color: var(--text-secondary);">Loading…</div>';
+            const questions = await api.getQuestions(examId);
+
+            if (!questions || questions.length === 0) {
+                list.innerHTML = '<div style="padding: 1rem;color: var(--text-secondary);">No questions yet. Add one on the right.</div>';
+                return;
+            }
+
+            list.innerHTML = questions.map((q, idx) => `
+                <div class="glass-card" style="margin-bottom: 1rem;">
+                    <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:0.35rem;">
+                                Q${idx + 1} • ${q.type} • ${q.marks} mark${q.marks === 1 ? '' : 's'}
+                            </div>
+                            <div style="white-space:pre-wrap;">${escapeHtml(q.text)}</div>
+                            ${q.type === 'mcq' ? renderOptions(q.options || []) : ''}
+                        </div>
+                        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                            <button class="btn btn-secondary" onclick="showEditModal('${q._id}')">Edit</button>
+                            <button class="btn btn-danger" onclick="handleDeleteQuestion('${q._id}')">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
+        }
+
+        function renderOptions(options) {
+            if (!options.length) return '';
+            const items = options.map(opt => {
+                const mark = opt.isCorrect ? ' (correct)' : '';
+                return `<li style="margin:0.25rem 0;color:${opt.isCorrect ? 'var(--success)' : 'var(--text-secondary)'};">${escapeHtml(opt.text)}${mark}</li>`;
+            }).join('');
+            return `<ul style="margin:0.75rem 0 0 1.1rem;">${items}</ul>`;
+        }
+
+        function toggleMcqFields() {
+            const type = document.getElementById('q-type').value;
+            const show = type === 'mcq';
+            document.getElementById('mcq-options-group').style.display = show ? 'block' : 'none';
+            document.getElementById('mcq-correct-group').style.display = show ? 'block' : 'none';
+            document.getElementById('expected-group').style.display = show ? 'none' : 'block';
+        }
+
+        async function handleAddQuestion(event) {
+            event.preventDefault();
+            const type = document.getElementById('q-type').value;
+            const marks = parseInt(document.getElementById('q-marks').value, 10);
+            const text = document.getElementById('q-text').value.trim();
+            const unit = document.getElementById('q-unit').value.trim();
+            const topic = document.getElementById('q-topic').value.trim();
+            const testCases = parseTestCases(document.getElementById('q-testcases').value);
+
+            if (!text) return;
+
+            let options = [];
+            let rubric = { keywords: [], answerKey: '', method: 'keyword', testCases };
+
+            if (type === 'mcq') {
+                const optionTexts = (document.getElementById('q-options').value || '')
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean);
+                const correctTexts = (document.getElementById('q-correct').value || '')
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean);
+
+                options = optionTexts.map(t => ({ text: t, isCorrect: correctTexts.includes(t) }));
+                rubric = { keywords: [], answerKey: correctTexts.join(', '), method: 'exact', testCases };
+            } else {
+                const expected = (document.getElementById('q-expected').value || '').trim();
+                rubric = {
+                    keywords: expected ? expected.split(/\W+/).filter(w => w.length >= 4).slice(0, 12) : [],
+                    answerKey: expected,
+                    method: (type === 'math' || type === 'programming') ? type : 'keyword',
+                    testCases
+                };
+            }
+
+          try {
+            await api.addQuestion(examId, { type, marks, text, options, rubric, unit, topic,
+              subject: document.getElementById('q-subject').value || 'general',
+              difficulty: parseInt(document.getElementById('q-difficulty').value) || 2,
+            });
+            document.getElementById('add-question-form').reset();
+            document.getElementById('q-type').value = 'short_answer';
+            toggleMcqFields();
+            Toast.success('Question added!');
+            await loadQuestions();
+          } catch (e) {
+            Toast.error('Failed to add question: ' + e.message);
+          }
+        }
+
+        async function handleDeleteQuestion(questionId) {
+            if (!confirm('Are you sure you want to delete this question? This action cannot be undone.')) return;
+          try {
+            await api.deleteQuestion(questionId);
+            Toast.success('Question deleted.');
+            await loadQuestions();
+          } catch (e) {
+            Toast.error('Failed to delete question: ' + e.message);
+          }
+        }
+
+        async function showEditModal(questionId) {
+            const questions = await api.getQuestions(examId);
+            const q = questions.find(x => x._id === questionId);
+            if (!q) return;
+
+          document.getElementById('edit-id').value = q._id;
+          document.getElementById('edit-marks').value = q.marks;
+          document.getElementById('edit-text').value = q.text;
+          document.getElementById('edit-subject').value = q.subject || 'general';
+
+          const show = q.type === 'mcq';
+          document.getElementById('edit-mcq-options-group').style.display = show ? 'block' : 'none';
+          document.getElementById('edit-mcq-correct-group').style.display = show ? 'block' : 'none';
+          document.getElementById('edit-expected-group').style.display = show ? 'none' : 'block';
+
+          if (show) {
+            document.getElementById('edit-options').value = (q.options || []).map(o => o.text).join(', ');
+            document.getElementById('edit-correct').value = (q.options || []).filter(o => o.isCorrect).map(o => o.text).join(', ');
+          } else {
+            document.getElementById('edit-expected').value = q.rubric?.answerKey || '';
+          }
+
+          document.getElementById('edit-modal').classList.add('open');
+        }
+
+        function closeEditModal() {
+          document.getElementById('edit-modal').classList.remove('open');
+        }
+
+        async function handleUpdateQuestion(event) {
+            event.preventDefault();
+            const questionId = document.getElementById('edit-id').value;
+            const marks = parseInt(document.getElementById('edit-marks').value, 10);
+            const text = document.getElementById('edit-text').value.trim();
+
+          const payload = { marks, text, subject: document.getElementById('edit-subject').value };
+
+          const optionsGroupVisible = document.getElementById('edit-mcq-options-group').style.display !== 'none';
+          if (optionsGroupVisible) {
+            const optionTexts = (document.getElementById('edit-options').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+            const correctTexts= (document.getElementById('edit-correct').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+            payload.options = optionTexts.map(t=>({text:t, isCorrect:correctTexts.includes(t)}));
+          } else {
+            const exp = document.getElementById('edit-expected').value.trim();
+            payload.rubric = { answerKey: exp, keywords: exp.split(/\W+/).filter(w=>w.length>=4).slice(0,12) };
+          }
+
+          try {
+            await api.updateQuestion(questionId, payload);
+            closeEditModal();
+            Toast.success('Question updated!');
+            await loadQuestions();
+          } catch (e) {
+            Toast.error('Failed to update: ' + e.message);
+          }
+        }
+
+        async function publishExam() {
+            if (!confirm('Publish this exam? (Must have at least 1 question)')) return;
+          try {
+            await api.publishExam(examId);
+            Toast.success('Exam published!');
+            await refreshAll();
+          } catch (e) {
+            Toast.error('Failed to publish: ' + e.message);
+          }
+        }
+
+        async function uploadAndParsePDF() {
+            const fileInput = document.getElementById('pdf-file');
+            const status = document.getElementById('import-status');
+            const importBtn = document.getElementById('import-btn');
+
+            importBtn.disabled = true;
+            parsedQuestions = [];
+            status.textContent = '';
+
+            const file = fileInput.files?.[0];
+            if (!file) {
+                alert('Select a PDF file first.');
+                return;
+            }
+
+          try {
+            status.textContent = 'Uploading PDF…';
+            const uploaded = await api.uploadPDF(file);
+            if (!uploaded.text || uploaded.text.trim().length < 20) {
+              status.textContent = 'PDF has no text layer — try OCR Image instead.';
+              return;
+            }
+            status.textContent = 'Parsing extracted text…';
+            const parsed = await api.parsePDFText(uploaded.text);
+            parsedQuestions = parsed.questions || [];
+            if (!parsedQuestions.length) {
+              status.textContent = 'No questions detected.';
+              return;
+            }
+            status.textContent = `Found ${parsedQuestions.length} questions. Click Import to add them.`;
+            importBtn.disabled = false;
+          } catch (e) {
+            Toast.error('PDF import failed: ' + e.message);
+          }
+        }
+
+        async function importParsedQuestions() {
+            if (!parsedQuestions.length) return;
+            if (!confirm(`Import ${parsedQuestions.length} drafted questions into this exam?`)) return;
+
+            const status = document.getElementById('import-status');
+            const importBtn = document.getElementById('import-btn');
+            importBtn.disabled = true;
+
+          status.textContent = 'Importing…';
+          try {
+            await api.bulkAddQuestions(examId, parsedQuestions.map(q => ({
+              text: q.text, type: q.type || 'short_answer', marks: q.marks || 1,
+              options: q.options || [], rubric: q.rubric || { keywords:[], answerKey:'', method:'keyword' }
+            })));
+            Toast.success(`Imported ${parsedQuestions.length} questions!`);
+            parsedQuestions = [];
+            status.textContent = '';
+            importBtn.disabled = true;
+            await refreshAll();
+          } catch (e) {
+            status.textContent = '';
+            Toast.error('Bulk import failed: ' + e.message);
+          }
+        }
+
+        function logout() { api.logout(); }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function parseTestCases(raw) {
+            const lines = (raw || '').split('\n').map(l => l.trim()).filter(Boolean);
+            return lines.map(line => {
+                const [left, weightPart] = line.split('|').map(s => s.trim());
+                const [input, expectedOutput] = (left || '').split('=>').map(s => s.trim());
+                const weight = weightPart ? parseFloat(weightPart) : 1;
+                return { input, expectedOutput, weight: isNaN(weight) ? 1 : weight };
+            });
+        }
+</script>
+</body>
+</html>

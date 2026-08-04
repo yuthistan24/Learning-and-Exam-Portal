@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results - Global Exams & Learning Portal</title>
+  <link rel="stylesheet" crossorigin href="/assets/style-B42aT28s.css">
+  <link rel="stylesheet" crossorigin href="/assets/enhanced-style-BDmbZ-z_.css">
+</head>
+<body>
+    <div class="bg-mesh"></div>
+
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">Global Exams</div>
+            <ul class="navbar-menu">
+                <li><span class="user-name" id="user-name">Loading...</span></li>
+                <li><a href="dashboard.html" class="btn btn-secondary" style="color:var(--text-secondary)">Back to Dashboard</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div style="max-width: 980px; margin-top: 2rem;">
+            <div class="dashboard-header">
+                <h1>Results</h1>
+            </div>
+
+            <div id="results-container" style="margin-top: 2rem;">
+                <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                    <p style="font-size: 1.2rem;">Loading results...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="src/js/api.legacy.js"></script>
+    <script>
+        const api = new APIClient();
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!localStorage.getItem('token')) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await api.getCurrentUser();
+                currentUser = response.user;
+                document.getElementById('user-name').textContent = currentUser.name;
+                await loadResults();
+            } catch (error) {
+                console.error('Failed to load user:', error);
+                window.location.href = 'login.html';
+            }
+        });
+
+        async function loadResults() {
+            const params = new URLSearchParams(window.location.search);
+            const examId = params.get('examId');
+            const container = document.getElementById('results-container');
+
+            try {
+                const canReview = ['teacher', 'admin'].includes(currentUser.role);
+                const results = examId && canReview
+                    ? await api.getExamResults(examId)
+                    : await api.request('GET', '/results/my-results');
+
+                if (!results || results.length === 0) {
+                    container.innerHTML = `
+                        <div class="glass-card" style="text-align:center;">
+                            <p>${examId && canReview ? 'No submissions yet for this exam.' : 'No completed exams yet.'}</p>
+                            <a href="dashboard.html" class="btn btn-primary" style="margin-top:1rem;">Back to Dashboard</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = results.map(result => renderResultCard(result, examId)).join('');
+            } catch (error) {
+                console.error('Failed to load results:', error);
+                container.innerHTML = '<div class="glass-card" style="text-align:center;color:var(--danger);">Error loading results. Please try again.</div>';
+            }
+        }
+
+        function renderResultCard(result, fallbackExamId) {
+            const exam = result.examId || {};
+            const student = result.studentId || {};
+            const percentage = Number(result.percentage || 0);
+            const isPassing = percentage >= 50;
+            const reportExamId = exam._id || fallbackExamId || exam;
+            const reportHref = ['teacher', 'admin'].includes(currentUser.role) && student._id
+                ? `result-report.html?examId=${reportExamId}&studentId=${student._id}`
+                : `result-report.html?examId=${reportExamId}`;
+
+            return `
+                <div class="glass-card" style="margin-bottom:1.5rem;padding:2rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.5rem;">
+                        <div>
+                            <h3 style="margin-bottom:0.5rem;">${exam.title || 'Exam Result'}</h3>
+                            ${student.name ? `<p style="color:var(--text-secondary);margin-bottom:0.25rem;">Student: ${student.name} (${student.email})</p>` : ''}
+                            <p style="color:var(--text-secondary);font-size:0.9rem;">Submitted ${new Date(result.submittedAt).toLocaleString()}</p>
+                        </div>
+                        <span class="status-badge ${isPassing ? 'bg-active' : 'bg-draft'}" style="padding:0.5rem 1rem;font-size:1rem;">${getGrade(percentage)}</span>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin:1.5rem 0;">
+                        <div style="background:rgba(59,130,246,0.1);padding:1rem;border-radius:8px;text-align:center;">
+                            <div style="font-size:2rem;font-weight:bold;color:var(--accent-primary);">${result.totalScore}/${result.totalMarks}</div>
+                            <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem;">Score</div>
+                        </div>
+                        <div style="background:${isPassing ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'};padding:1rem;border-radius:8px;text-align:center;">
+                            <div style="font-size:2rem;font-weight:bold;color:${isPassing ? 'var(--success)' : 'var(--danger)'};">${percentage.toFixed(1)}%</div>
+                            <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem;">Percentage</div>
+                        </div>
+                        <div style="background:rgba(139,92,246,0.1);padding:1rem;border-radius:8px;text-align:center;">
+                            <div style="font-size:2rem;font-weight:bold;color:var(--accent-secondary);">${result.status}</div>
+                            <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem;">Status</div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem;">
+                        <a href="${reportHref}" class="btn btn-primary">View Report</a>
+                        <a href="dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getGrade(percentage) {
+            const pct = Number(percentage);
+            if (pct >= 90) return 'A';
+            if (pct >= 80) return 'B';
+            if (pct >= 70) return 'C';
+            if (pct >= 60) return 'D';
+            return 'F';
+        }
+    </script>
+</body>
+</html>

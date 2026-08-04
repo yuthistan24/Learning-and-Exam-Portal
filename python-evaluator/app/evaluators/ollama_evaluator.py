@@ -14,16 +14,28 @@ from app.utils.logger import logger
 
 # ── Subject routing config ────────────────────────────────────────────────────
 SUBJECT_MODELS: Dict[str, str] = {
-    "coding":        "qwen2.5-coder:1.5b-base",
-    "programming":   "qwen2.5-coder:1.5b-base",
-    "math":          "deepseek-r1:14b",
-    "mathematics":   "deepseek-r1:14b",
-    "english":       "qwen3.5:latest",
-    "essay":         "qwen3.5:latest",
-    "science":       "qwen3.5:latest",
-    "general":       "qwen3.5:latest",
-    "short_answer":  "qwen3.5:latest",
-    "long_answer":   "qwen3.5:latest",
+    # Programming / Coding subjects → fast coder model
+    "coding":                        "qwen2.5-coder:1.5b-base",
+    "programming":                   "qwen2.5-coder:1.5b-base",
+    "programming in c":              "qwen2.5-coder:1.5b-base",
+    "programming in python":         "qwen2.5-coder:1.5b-base",
+    "java programming":              "qwen2.5-coder:1.5b-base",
+    "object oriented programming":   "qwen2.5-coder:1.5b-base",
+    "object oriented programming using c++": "qwen2.5-coder:1.5b-base",
+    "data structures":               "qwen2.5-coder:1.5b-base",
+    "computer organization":         "qwen2.5-coder:1.5b-base",
+    # Math → reasoning model
+    "math":                          "deepseek-r1:14b",
+    "mathematics":                   "deepseek-r1:14b",
+    "discrete mathematical structures": "deepseek-r1:14b",
+    "probability and statistics":    "deepseek-r1:14b",
+    # General / English / Science → stable multimodal model
+    "english":                       "gemma4:e4b-it-qat",
+    "essay":                         "gemma4:e4b-it-qat",
+    "science":                       "gemma4:e4b-it-qat",
+    "general":                       "gemma4:e4b-it-qat",
+    "short_answer":                  "gemma4:e4b-it-qat",
+    "long_answer":                   "gemma4:e4b-it-qat",
 }
 
 # System prompts tuned per subject
@@ -211,22 +223,33 @@ class OllamaEvaluator(BaseEvaluator):
 
     @staticmethod
     def _resolve_subject(rubric: Dict[str, Any]) -> str:
-        q_type  = (rubric.get("type") or rubric.get("question_type") or "").lower()
-        subject = (rubric.get("subject") or "").lower()
+        q_type  = (rubric.get("type") or rubric.get("question_type") or "").lower().strip()
+        subject = (rubric.get("subject") or "").lower().strip()
 
-        if q_type in ("programming", "coding") or subject in ("coding", "programming"):
+        # Try exact full subject first (for detailed SUBJECT_MODELS entries)
+        if subject in SUBJECT_MODELS:
+            return subject
+
+        # Partial-match for programming/coding
+        programming_keywords = ("programming", "coding", "code", "java", "python", "c++", "sql", "javascript")
+        if any(k in subject for k in programming_keywords) or q_type in ("programming", "coding", "code"):
             return "coding"
-        if q_type in ("math", "mathematics") or subject in ("math", "mathematics"):
+
+        if q_type in ("math", "mathematics") or any(k in subject for k in ("math", "calculus", "algebra", "statistics", "probability", "discrete")):
             return "math"
-        if q_type in ("long_answer", "essay") or subject in ("english", "essay"):
+
+        if q_type in ("long_answer", "essay") or any(k in subject for k in ("english", "essay", "literature", "communication")):
             return "english"
-        if subject in ("science", "physics", "chemistry", "biology"):
+
+        if any(k in subject for k in ("science", "physics", "chemistry", "biology", "digital", "circuit", "electronics")):
             return "science"
+
         return "general"
 
     @staticmethod
     def _resolve_model(subject: str) -> str:
-        return SUBJECT_MODELS.get(subject, SUBJECT_MODELS["general"])
+        # Try full subject key first, then fallback to general
+        return SUBJECT_MODELS.get(subject, SUBJECT_MODELS.get("general", "gemma4:e4b-it-qat"))
 
     @staticmethod
     def _empty_response(subject: str) -> Dict[str, Any]:

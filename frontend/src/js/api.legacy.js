@@ -67,16 +67,17 @@ class APIClient {
   }
 
   toggleTheme() {
-    const current = localStorage.getItem('theme') || 'dark';
-    const next    = current === 'dark' ? 'light' : 'dark';
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next    = current === 'light' ? 'dark' : 'light';
     localStorage.setItem('theme', next);
     document.documentElement.setAttribute('data-theme', next);
     this._updateThemeIcon(next);
   }
 
   _updateThemeIcon(theme) {
-    const icon = document.querySelector('.theme-toggle i');
-    if (icon) icon.className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+    document.querySelectorAll('.theme-toggle i').forEach(icon => {
+      icon.className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+    });
   }
 
   // ── Core request ──────────────────────────────────────────────
@@ -204,9 +205,12 @@ class APIClient {
   async ocrImage(file) {
     const formData = new FormData();
     formData.append('file', file);
-    // Call Python evaluator OCR directly (port 8000)
-    const response = await fetch('http://localhost:8000/api/ocr/image', {
+    const ocrUrl = (window.location.port === '' || window.location.port === '80')
+      ? '/python/ocr/image'
+      : 'http://localhost:8000/api/ocr/image';
+    const response = await fetch(ocrUrl, {
       method: 'POST',
+      headers: { ...(this.token && { Authorization: `Bearer ${this.token}` }) },
       body: formData,
     });
     const result = await response.json();
@@ -216,7 +220,10 @@ class APIClient {
 
   async ocrStatus() {
     try {
-      const response = await fetch('http://localhost:8000/api/ocr/status');
+      const ocrUrl = (window.location.port === '' || window.location.port === '80')
+        ? '/python/ocr/status'
+        : 'http://localhost:8000/api/ocr/status';
+      const response = await fetch(ocrUrl);
       return await response.json();
     } catch { return { pytesseractAvailable: false }; }
   }
@@ -250,6 +257,7 @@ class APIClient {
 // Helpers exposed globally
 function logout() {
   localStorage.removeItem('token');
+  sessionStorage.clear();
   window.location.href = 'login.html';
 }
 
