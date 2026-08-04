@@ -3,7 +3,7 @@
 /* ═══════════════════════════════════════════════════════════════
    DESIGN TOKENS
 ═══════════════════════════════════════════════════════════════ */
-:root {
+:root, [data-theme="dark"] {
   /* Brand colors */
   --brand-50:  hsl(230, 85%, 97%);
   --brand-100: hsl(230, 80%, 92%);
@@ -27,24 +27,27 @@
   --info:             hsl(205, 75%, 52%);
 
   /* Dark backgrounds */
-  --bg-base:    hsl(220, 20%, 6%);
-  --bg-surface: hsl(220, 18%, 9%);
-  --bg-card:    hsl(220, 15%, 12%);
-  --bg-overlay: hsl(220, 12%, 15%);
-  --bg-input:   hsl(220, 15%, 10%);
-  --bg-hover:   hsl(220, 15%, 16%);
+  --bg-base:      hsl(220, 20%, 6%);
+  --bg-surface:   hsl(220, 18%, 9%);
+  --bg-card:      hsl(220, 15%, 12%);
+  --bg-overlay:   hsl(220, 12%, 15%);
+  --bg-input:     hsl(220, 15%, 10%);
+  --bg-hover:     hsl(220, 15%, 16%);
+
+  /* Aliases for cross-file compatibility */
+  --bg-primary:   var(--bg-base);
+  --bg-secondary: var(--bg-surface);
+  --bg-tertiary:  var(--bg-overlay);
+  --bg-sidebar:   var(--bg-surface);
+  --bg-navbar:    hsla(220, 20%, 6%, 0.85);
 
   /* Text */
   --text-primary:   hsl(220, 20%, 96%);
   --text-secondary: hsl(220, 15%, 65%);
   --text-tertiary:  hsl(220, 12%, 45%);
   --text-inverse:   hsl(220, 20%, 8%);
-
-  /* Legacy aliases (keep existing pages working) */
-  --accent-primary: var(--accent-primary);
   --text-main:      var(--text-primary);
   --text-muted:     var(--text-secondary);
-  --bg-base:        var(--bg-base);
 
   /* Borders */
   --border:        hsla(220, 20%, 100%, 0.08);
@@ -103,19 +106,30 @@
 /* ═══════════════════════════════════════════════════════════════
    LIGHT MODE
 ═══════════════════════════════════════════════════════════════ */
-[data-theme="light"] {
+[data-theme="light"], body.light {
   --bg-base:    hsl(220, 15%, 97%);
   --bg-surface: hsl(220, 12%, 94%);
   --bg-card:    hsl(0, 0%, 100%);
   --bg-overlay: hsl(220, 10%, 90%);
   --bg-input:   hsl(0, 0%, 100%);
-  --bg-hover:   hsl(220, 15%, 95%);
+  --bg-hover:   hsl(220, 15%, 92%);
+
+  --bg-primary:   var(--bg-base);
+  --bg-secondary: var(--bg-surface);
+  --bg-tertiary:  var(--bg-overlay);
+  --bg-sidebar:   var(--bg-surface);
+  --bg-navbar:    hsla(220, 15%, 97%, 0.85);
+
   --text-primary:   hsl(220, 25%, 10%);
-  --text-secondary: hsl(220, 15%, 40%);
-  --text-tertiary:  hsl(220, 10%, 60%);
-  --border:        hsla(220, 20%, 10%, 0.1);
+  --text-secondary: hsl(220, 15%, 38%);
+  --text-tertiary:  hsl(220, 10%, 55%);
+  --text-inverse:   hsl(220, 20%, 96%);
+  --text-main:      var(--text-primary);
+  --text-muted:     var(--text-secondary);
+
+  --border:        hsla(220, 20%, 10%, 0.12);
   --border-subtle: hsla(220, 20%, 10%, 0.06);
-  --border-strong: hsla(220, 20%, 10%, 0.18);
+  --border-strong: hsla(220, 20%, 10%, 0.22);
 }
 
 /* ═══════════════════════════════════════════════════════════════

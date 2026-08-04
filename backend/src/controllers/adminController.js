@@ -191,7 +191,7 @@ exports.deleteUser = async (req, res) => {
     if (!user) {
       throw new AppError('User not found', 404);
     }
-    if (user._id.toString() === req.user.userId) {
+    if (user._id?.toString() === req.user.userId) {
       throw new AppError('You cannot delete your own admin account', 400);
     }
 
@@ -273,7 +273,7 @@ exports.removeCourseFromUser = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) throw new AppError('User not found', 404);
 
-    user.enrolledCourses = user.enrolledCourses.filter(id => id.toString() !== courseId);
+    user.enrolledCourses = (user.enrolledCourses || []).filter(id => id && id.toString() !== courseId);
     await user.save();
 
     logger.info(`Admin removed course ${courseId} from user ${user.email}`);

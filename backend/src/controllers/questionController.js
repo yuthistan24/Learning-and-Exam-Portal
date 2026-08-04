@@ -7,9 +7,13 @@ const Result = require('../models/Result');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 
-const canManageExam = (req, exam) => (
-  req.user.role === 'admin' || exam.createdBy.toString() === req.user.userId
-);
+const canManageExam = (req, exam) => {
+  if (!exam) return false;
+  if (req.user.role === 'admin') return true;
+  if (!exam.createdBy) return false;
+  const creatorId = exam.createdBy._id ? exam.createdBy._id.toString() : exam.createdBy.toString();
+  return creatorId === req.user.userId;
+};
 
 const studentSafeQuestion = (question) => {
   const plain = typeof question.toObject === 'function' ? question.toObject() : question;

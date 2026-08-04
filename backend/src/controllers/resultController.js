@@ -6,8 +6,13 @@ const { AppError } = require('../middleware/errorHandler');
 const { logger }   = require('../utils/logger');
 const pythonClient = require('../services/pythonClient');
 
-const canManageExam = (req, exam) =>
-  req.user.role === 'admin' || exam.createdBy.toString() === req.user.userId;
+const canManageExam = (req, exam) => {
+  if (!exam) return false;
+  if (req.user.role === 'admin') return true;
+  if (!exam.createdBy) return false;
+  const creatorId = exam.createdBy._id ? exam.createdBy._id.toString() : exam.createdBy.toString();
+  return creatorId === req.user.userId;
+};
 
 // ── Get result for student ────────────────────────────────────────────────────
 exports.getStudentResult = async (req, res) => {
@@ -279,7 +284,8 @@ exports.getResultReport = async (req, res) => {
     if (targetStudentId) {
       const exam = await Exam.findById(examId);
       if (!exam) throw new AppError('Exam not found', 404);
-      const isTeacher = exam.createdBy.toString() === requesterId;
+      const creatorId = exam.createdBy?._id ? exam.createdBy._id.toString() : exam.createdBy?.toString();
+      const isTeacher = creatorId === requesterId;
       if (!isTeacher && requesterRole !== 'admin')
         throw new AppError('Not authorized', 403);
       studentId = targetStudentId;
@@ -420,7 +426,10 @@ exports.getStudentProgress = async (req, res) => {
     const results  = await Result.find({ examId: { $in: examIds } }).populate('examId', 'title');
 
     const progressData = students.map(student => {
-      const studentResults = results.filter(r => r.studentId.toString() === student._id.toString());
+      const studentResults = results.filter(r => {
+        const sId = r.studentId?._id ? r.studentId._id.toString() : r.studentId?.toString();
+        return sId === student._id.toString();
+      });
       const examsTaken     = studentResults.length;
       const totalPercentage = studentResults.reduce((s, r) => s + (r.percentage || 0), 0);
       const averageScore   = examsTaken > 0 ? (totalPercentage / examsTaken).toFixed(1) : 0;
