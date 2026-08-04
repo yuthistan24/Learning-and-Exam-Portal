@@ -38,4 +38,9 @@ const authorizeRole = (...roles) => {
   };
 };
 
-module.exports = { authenticateToken, authorizeRole };
+module.exports = { 
+  authenticateToken, 
+  authorizeRole,
+  authenticate: authenticateToken,
+  authorize: authorizeRole
+};

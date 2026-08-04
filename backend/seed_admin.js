@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const User = require('./src/models/User');
 
+require('dotenv').config();
+
 const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/global-exams';
 
 async function seedAdmin() {

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Exams — AI-Powered Learning & Examination Platform</title>
+  <meta name="description" content="The next-generation examination platform with AI-powered grading, subject-specific evaluation models, OCR answer scanning, and real-time analytics.">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body { padding-top: var(--navbar-height); }
+
+    /* Hero */
+    .hero {
+      min-height: calc(100vh - var(--navbar-height));
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      padding: var(--space-12) var(--space-8);
+      position: relative;
+    }
+    .hero-content { max-width: 820px; margin: 0 auto; }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: var(--space-2);
+      padding: 0.35rem 1rem;
+      background: hsla(230, 70%, 55%, 0.12);
+      border: 1px solid hsla(230, 70%, 55%, 0.25);
+      border-radius: var(--radius-full);
+      font-size: 0.78rem; font-weight: 600;
+      color: hsl(230, 80%, 72%);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: var(--space-6);
+    }
+    .hero-title {
+      font-size: clamp(2.5rem, 7vw, 4.5rem);
+      font-weight: 800; line-height: 1.08;
+      letter-spacing: -0.03em;
+      margin-bottom: var(--space-6);
+    }
+    .hero-subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--text-secondary);
+      max-width: 600px; margin: 0 auto var(--space-10);
+      line-height: 1.7;
+    }
+    .hero-actions { display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap; }
+    .hero-actions .btn { padding: 0.8rem 2rem; font-size: 1rem; }
+
+    /* Floating accent dots */
+    .hero::before, .hero::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(60px);
+    }
+    .hero::before {
+      width: 400px; height: 400px;
+      background: hsla(230, 70%, 55%, 0.07);
+      top: 10%; left: -10%;
+    }
+    .hero::after {
+      width: 300px; height: 300px;
+      background: hsla(270, 65%, 60%, 0.07);
+      bottom: 10%; right: -5%;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: var(--space-6) var(--space-8);
+    }
+    .stats-bar-inner {
+      max-width: 1000px; margin: 0 auto;
+      display: flex; justify-content: space-around; flex-wrap: wrap; gap: var(--space-6);
+      text-align: center;
+    }
+    .stats-bar-item strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 1.75rem; font-weight: 800;
+      background: var(--gradient-text);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .stats-bar-item span { font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; }
+
+    /* Features */
+    .section { padding: var(--space-16) var(--space-8); }
+    .section-title { text-align: center; margin-bottom: var(--space-3); }
+    .section-sub {
+      text-align: center; color: var(--text-secondary);
+      max-width: 550px; margin: 0 auto var(--space-12);
+      font-size: 1.05rem;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--space-5);
+      max-width: 1200px; margin: 0 auto;
+    }
+
+    .feature-card {
+      padding: var(--space-8);
+      border-radius: var(--radius-xl);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      transition: all 0.3s ease;
+      position: relative; overflow: hidden;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-lg);
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--gradient-brand);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-icon {
+      width: 52px; height: 52px;
+      border-radius: var(--radius-lg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+      margin-bottom: var(--space-5);
+    }
+
+    .feature-icon.blue   { background: hsla(230, 70%, 55%, 0.12); color: hsl(230, 80%, 72%); }
+    .feature-icon.purple { background: hsla(270, 65%, 60%, 0.12); color: hsl(270, 75%, 78%); }
+    .feature-icon.green  { background: hsla(145, 65%, 42%, 0.12); color: hsl(145, 55%, 60%); }
+    .feature-icon.orange { background: hsla(35, 90%, 52%, 0.12);  color: hsl(35, 80%, 67%); }
+    .feature-icon.cyan   { background: hsla(190, 80%, 50%, 0.12); color: hsl(190, 70%, 65%); }
+    .feature-icon.red    { background: hsla(0, 70%, 55%, 0.12);   color: hsl(0, 70%, 72%); }
+
+    .feature-card h3 { font-size: 1.05rem; margin-bottom: var(--space-3); }
+    .feature-card p  { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.65; }
+
+    /* AI Models showcase */
+    .models-section {
+      max-width: 900px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-4);
+    }
+    .model-card {
+      padding: var(--space-5);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      text-align: center;
+    }
+    .model-badge { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: var(--space-2); }
+    .model-name { font-family: var(--font-mono); font-size: 0.85rem; color: hsl(230, 80%, 72%); margin-bottom: var(--space-1); }
+    .model-subject { font-size: 0.78rem; color: var(--text-secondary); }
+
+    /* Demo accounts */
+    .demo-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-4); max-width: 750px; margin: 0 auto;
+    }
+    .demo-card {
+      background: var(--bg-overlay);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+    }
+    .demo-role { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: var(--space-3); }
+    .demo-cred { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: var(--space-1); }
+    .demo-cred span { color: var(--text-primary); font-weight: 600; font-family: var(--font-mono); }
+
+    /* CTA */
+    .cta-section {
+      text-align: center;
+      padding: var(--space-16) var(--space-8);
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
+    }
+  </style>
+  <link rel="stylesheet" crossorigin href="/assets/index-BzAjqrcv.css">
+</head>
+<body>
+<div class="bg-mesh"></div>
+<div id="toast-container"></div>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-container">
+    <a href="index.html" class="navbar-brand">
+      <i class="fas fa-graduation-cap" style="margin-right:0.5rem"></i>Global Exams
+    </a>
+    <ul class="navbar-menu">
+      <li>
+        <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle theme">
+          <i class="fas fa-sun"></i>
+        </button>
+      </li>
+      <li><a href="login.html" class="btn btn-ghost btn-sm">Sign In</a></li>
+      <li><a href="signup.html" class="btn btn-primary btn-sm">Get Started</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-content animate-in">
+    <div class="hero-eyebrow">
+      <i class="fas fa-robot"></i>
+      AI-Powered Examination Platform
+    </div>
+    <h1 class="hero-title">
+      Learn Smarter.<br>
+      <span class="gradient-text">Evaluate Intelligently.</span>
+    </h1>
+    <p class="hero-subtitle">
+      The next-generation exam platform with subject-specific AI evaluation models,
+      OCR answer scanning, and real-time teacher analytics — all running locally.
+    </p>
+    <div class="hero-actions">
+      <a href="signup.html" class="btn btn-primary btn-lg">
+        <i class="fas fa-rocket"></i> Create Free Account
+      </a>
+      <a href="login.html" class="btn btn-secondary btn-lg">
+        <i class="fas fa-sign-in-alt"></i> Sign In
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Stats bar -->
+<div class="stats-bar">
+  <div class="stats-bar-inner">
+    <div class="stats-bar-item">
+      <strong>5</strong>
+      <span>Subject-Specific AI Models</span>
+    </div>
+    <div class="stats-bar-item">
+      <strong>5+</strong>
+      <span>Question Types Supported</span>
+    </div>
+    <div class="stats-bar-item">
+      <strong>100%</strong>
+      <span>Local AI — No Cloud Required</span>
+    </div>
+    <div class="stats-bar-item">
+      <strong>OCR</strong>
+      <span>Handwritten Answer Support</span>
+    </div>
+  </div>
+</div>
+
+<!-- Features -->
+<section class="section">
+  <div class="container">
+    <h2 class="section-title gradient-text">Everything You Need</h2>
+    <p class="section-sub">A complete ecosystem for online examination — from question setting to AI grading.</p>
+
+    <div class="features-grid">
+      <div class="feature-card animate-in">
+        <div class="feature-icon blue"><i class="fas fa-brain"></i></div>
+        <h3>Subject-Specific AI Grading</h3>
+        <p>Different Ollama models for each subject — CodeLlama for programming, DeepSeek-R1 for math reasoning, Qwen for English essays.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon purple"><i class="fas fa-camera"></i></div>
+        <h3>OCR Answer Scanning</h3>
+        <p>Students can upload photos of handwritten answers. pytesseract extracts text automatically for AI evaluation.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon green"><i class="fas fa-code"></i></div>
+        <h3>Live Code Execution</h3>
+        <p>Programming questions run student code against test cases in Python, Java, C, and C++. Instant pass/fail feedback.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon orange"><i class="fas fa-chart-bar"></i></div>
+        <h3>Teacher Analytics</h3>
+        <p>Per-student AI confidence scores, model used, evaluation method, and one-click score override — all in one panel.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon cyan"><i class="fas fa-shield-alt"></i></div>
+        <h3>Secure Proctoring</h3>
+        <p>Tab-switch detection, malpractice logging, and timed exams keep academic integrity intact.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon red"><i class="fas fa-graduation-cap"></i></div>
+        <h3>Interactive Learning Portal</h3>
+        <p>Browse courses, track topic completion, practice exercises, and link directly to exam preparation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI Models -->
+<section class="section" style="background: var(--bg-surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="container">
+    <h2 class="section-title">AI Model Assignments</h2>
+    <p class="section-sub">Each subject gets the best local model — all running on your machine via Ollama.</p>
+    <div class="models-section">
+      <div class="model-card">
+        <div class="model-badge badge badge-blue">💻 Coding</div>
+        <div class="model-name">qwen2.5-coder<br>:1.5b-base</div>
+        <div class="model-subject">Fast · Specialized · Accurate</div>
+      </div>
+      <div class="model-card">
+        <div class="model-badge badge badge-yellow">📐 Math</div>
+        <div class="model-name">deepseek-r1<br>:14b</div>
+        <div class="model-subject">Best reasoning · Step verification</div>
+      </div>
+      <div class="model-card">
+        <div class="model-badge badge badge-green">📝 English</div>
+        <div class="model-name">qwen3.5<br>:latest</div>
+        <div class="model-subject">Essays · Grammar · Semantics</div>
+      </div>
+      <div class="model-card">
+        <div class="model-badge badge badge-cyan">🔬 Science</div>
+        <div class="model-name">qwen3.5<br>:latest</div>
+        <div class="model-subject">Factual · Terminology · Logic</div>
+      </div>
+      <div class="model-card">
+        <div class="model-badge badge badge-gray">📚 General</div>
+        <div class="model-name">qwen3.5<br>:latest</div>
+        <div class="model-subject">All-purpose · Short answers</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Demo accounts -->
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">Quick Start — Demo Accounts</h2>
+    <p class="section-sub">Pre-seeded accounts for immediate exploration.</p>
+    <div class="demo-grid">
+      <div class="demo-card">
+        <div class="demo-role" style="color: hsl(230, 80%, 72%)">
+          <i class="fas fa-user-graduate"></i> Student
+        </div>
+        <div class="demo-cred">Register via Sign Up page</div>
+        <div class="demo-cred" style="margin-top: var(--space-3)">
+          <a href="signup.html" class="btn btn-secondary btn-sm" style="width:100%">Register Now</a>
+        </div>
+      </div>
+      <div class="demo-card">
+        <div class="demo-role" style="color: hsl(35, 80%, 67%)">
+          <i class="fas fa-chalkboard-teacher"></i> Teacher
+        </div>
+        <div class="demo-cred">Email: <span>teacher.ds@college.edu</span></div>
+        <div class="demo-cred">Password: <span>teacher12345</span></div>
+        <div class="demo-cred" style="margin-top: var(--space-3)">
+          <a href="login.html" class="btn btn-secondary btn-sm" style="width:100%">Login as Teacher</a>
+        </div>
+      </div>
+      <div class="demo-card">
+        <div class="demo-role" style="color: hsl(0, 70%, 72%)">
+          <i class="fas fa-user-shield"></i> Admin
+        </div>
+        <div class="demo-cred">Email: <span>admin@college.edu</span></div>
+        <div class="demo-cred">Password: <span>admin12345</span></div>
+        <div class="demo-cred" style="margin-top: var(--space-3)">
+          <a href="login.html" class="btn btn-secondary btn-sm" style="width:100%">Login as Admin</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <h2 style="font-size: clamp(1.5rem, 4vw, 2rem); margin-bottom: var(--space-4)">
+    Ready to transform your classroom?
+  </h2>
+  <p style="color: var(--text-secondary); margin-bottom: var(--space-8); font-size: 1.05rem;">
+    Set up in minutes. AI evaluation powered entirely by local models.
+  </p>
+  <a href="signup.html" class="btn btn-primary btn-lg">
+    <i class="fas fa-rocket"></i> Get Started for Free
+  </a>
+</section>
+
+<script src="src/js/api.legacy.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (localStorage.getItem('token')) {
+      try {
+        await api.getCurrentUser();
+        window.location.href = 'dashboard.html';
+      } catch {
+        localStorage.removeItem('token');
+      }
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,5 +1,3 @@
-import { addBase } from '@tailwindcss/vite'
-
 export default {
   content: [
     './index.html',
