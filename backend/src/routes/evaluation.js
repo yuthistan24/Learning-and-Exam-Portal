@@ -1,6 +1,8 @@
 const express = require('express');
 const router  = express.Router();
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
+const authenticate = authenticateToken;
+const authorize = authorizeRole;
 const resultController = require('../controllers/resultController');
 
 // Re-evaluate a student's exam result using AI
