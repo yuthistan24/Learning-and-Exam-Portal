@@ -62,16 +62,20 @@ async function handleAuthSubmit(event) {
 }
 
 function showDashboard() {
-    document.getElementById('auth-section').classList.add('hidden');
-    document.getElementById('dashboard-section').classList.remove('hidden');
+    const authSec = document.getElementById('auth-section');
+    if (authSec) authSec.classList.add('hidden');
+    const dashSec = document.getElementById('dashboard-section');
+    if (dashSec) dashSec.classList.remove('hidden');
     
     // Show appropriate dashboard
-    if (currentUser.role === 'student') {
+    if (currentUser?.role === 'student') {
         loadStudentExams();
-        document.getElementById('student-dashboard').classList.remove('hidden');
+        const studDash = document.getElementById('student-dashboard');
+        if (studDash) studDash.classList.remove('hidden');
     } else {
         loadTeacherExams();
-        document.getElementById('teacher-dashboard').classList.remove('hidden');
+        const teachDash = document.getElementById('teacher-dashboard');
+        if (teachDash) teachDash.classList.remove('hidden');
     }
 }
 

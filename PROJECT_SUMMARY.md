@@ -342,7 +342,7 @@ Four comprehensive guides:
 2. Set up MongoDB (local or cloud)
 3. Run backend: `npm install && npm run dev`
 4. Run Python service: `pip install -r requirements.txt && python main.py`
-5. Open frontend in browser: `frontend/public/index.html`
+5. Open frontend in browser: `frontend/index.html`
 6. Test the complete flow:
    - Register as teacher
    - Create exam

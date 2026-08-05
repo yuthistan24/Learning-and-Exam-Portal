@@ -193,7 +193,7 @@
     <a href="index.html" class="navbar-brand">
       <i class="fas fa-graduation-cap" style="margin-right:0.5rem"></i>Global Exams
     </a>
-    <ul class="navbar-menu">
+    <ul class="navbar-menu" id="navbar-menu">
       <li>
         <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle theme">
           <i class="fas fa-sun"></i>
@@ -387,7 +387,17 @@
     if (localStorage.getItem('token')) {
       try {
         await api.getCurrentUser();
-        window.location.href = 'dashboard.html';
+        const navMenu = document.getElementById('navbar-menu');
+        if (navMenu) {
+          navMenu.innerHTML = `
+            <li>
+              <button class="theme-toggle" onclick="api.toggleTheme()" title="Toggle theme">
+                <i class="fas fa-sun"></i>
+              </button>
+            </li>
+            <li><a href="dashboard.html" class="btn btn-primary btn-sm"><i class="fas fa-th-large"></i> Dashboard</a></li>
+          `;
+        }
       } catch {
         localStorage.removeItem('token');
       }

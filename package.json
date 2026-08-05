@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "pdf-parse-fork": "^1.2.0"
   }
 }
